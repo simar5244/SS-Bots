@@ -118,11 +118,18 @@ begin
       
       { Update with user-provided values if any }
       if EnvPage.Values[0] <> '' then
-        EnvContent.Values['OPENAI_API_KEY'] := EnvPage.Values[0];
+      begin
+        EnvContent.Add('');
+        EnvContent.Add('OPENAI_API_KEY=' + EnvPage.Values[0]);
+      end;
       if EnvPage.Values[1] <> '' then
-        EnvContent.Values['NEXT_PUBLIC_SUPABASE_URL'] := EnvPage.Values[1];
+      begin
+        EnvContent.Add('NEXT_PUBLIC_SUPABASE_URL=' + EnvPage.Values[1]);
+      end;
       if EnvPage.Values[2] <> '' then
-        EnvContent.Values['NEXT_PUBLIC_SUPABASE_ANON_KEY'] := EnvPage.Values[2];
+      begin
+        EnvContent.Add('NEXT_PUBLIC_SUPABASE_ANON_KEY=' + EnvPage.Values[2]);
+      end;
       
       { Save .env file }
       EnvContent.SaveToFile(EnvFile);
