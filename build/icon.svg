@@ -1,0 +1,48 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle with gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4F46E5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7C3AED;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="botGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E0E7FF;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="256" height="256" rx="48" fill="url(#bgGradient)"/>
+  
+  <!-- Robot head -->
+  <rect x="78" y="80" width="100" height="90" rx="12" fill="url(#botGradient)"/>
+  
+  <!-- Antenna -->
+  <line x1="128" y1="60" x2="128" y2="80" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="128" cy="55" r="6" fill="#FCD34D"/>
+  
+  <!-- Eyes -->
+  <circle cx="103" cy="110" r="10" fill="#4F46E5"/>
+  <circle cx="153" cy="110" r="10" fill="#4F46E5"/>
+  <circle cx="106" cy="107" r="4" fill="#FFFFFF"/>
+  <circle cx="156" cy="107" r="4" fill="#FFFFFF"/>
+  
+  <!-- Mouth/Display -->
+  <rect x="93" y="135" width="70" height="20" rx="4" fill="#4F46E5" opacity="0.3"/>
+  <line x1="103" y1="145" x2="123" y2="145" stroke="#4F46E5" stroke-width="3" stroke-linecap="round"/>
+  <line x1="133" y1="145" x2="153" y2="145" stroke="#4F46E5" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Body -->
+  <rect x="68" y="175" width="120" height="60" rx="8" fill="url(#botGradient)"/>
+  
+  <!-- Arms -->
+  <rect x="48" y="185" width="15" height="40" rx="7" fill="#E0E7FF"/>
+  <rect x="193" y="185" width="15" height="40" rx="7" fill="#E0E7FF"/>
+  
+  <!-- Chest panel -->
+  <rect x="108" y="190" width="40" height="35" rx="4" fill="#4F46E5" opacity="0.2"/>
+  <circle cx="128" cy="207" r="6" fill="#10B981"/>
+  
+  <!-- SS Text -->
+  <text x="128" y="50" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#FFFFFF" text-anchor="middle">SS</text>
+</svg>

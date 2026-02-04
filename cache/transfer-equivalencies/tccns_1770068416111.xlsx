@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-QLXPV32ZD8"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-QLXPV32ZD8');
+</script>
+
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+  <title>Texas Common Course Numbering System</title>
+  <meta content="" name="Texas Common Course Numbering System TCCNS">
+  <meta name="Texas Common Course Numbering System (TCCNS), transfer equivalency for lower-division courses of higher education in Texas">
+
+
+
+  <link href="/favicon_tccns2.png" rel="icon">
+  <link href="/favicon_tccns2.png" rel="apple-touch-icon">
+
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Krub:300,300i,400,400i,500,500i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+
+  <link href="/assets/vendor/aos/aos.css" rel="stylesheet">
+  <link href="/assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="/assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
+  <link href="/assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+  <link href="/assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+  <link href="/assets/css/style.css" rel="stylesheet">
+  <link href="https://cdn.datatables.net/v/bs5/dt-2.1.4/datatables.min.css" rel="stylesheet">
+</head>
+
+<body>
+<!--hide on smaller than lg-->
+<a href="/" class="d-none d-lg-block" style="position:fixed;top:0px;left:-10px;z-index:999;"><img src="/logoonly-v2.9.png" /></a>
+
+
+		
+
+  <!-- ======= Header ======= -->
+  <header id="header" class="fixed-top">
+    <div class="container d-flex align-items-center justify-content-between">
+
+      <!--<h1 class="logo"><a href="/">Texas Common Course Numbering System</a></h1>-->
+
+	<!--hide on md and larger-->
+      <a href="/" class="logo d-lg-none"><img src="/fulllogo.png" alt="" class="img-fluid"></a>
+
+	<!--hide on smaller than md-->
+      <a href="/" class="logo d-none d-lg-block"><img src="/textlogo.png" alt="" class="img-fluid" style="position:absolute;left:130px;top:20px;"></a>
+
+      <nav id="navbar" class="navbar" style="z-index:1000;">
+        <ul>
+          <li><a class="nav-link scrollto" href="/">Check Courses</a></li>
+          <li><a class="nav-link scrollto" href="/schools">Schools</a></li>
+          <li><a class="nav-link scrollto" href="/download">Download Matrix</a></li>
+          <li><a class="nav-link scrollto" href="/about">About</a></li>
+
+	      
+
+
+		          		<li><a class="getstarted scrollto" data-bs-toggle="modal" data-bs-target="#loginModal" style="cursor:pointer;">Login</a></li>
+			
+        </ul>
+        <i class="bi bi-list mobile-nav-toggle"></i>
+      </nav><!-- .navbar -->
+
+    </div>
+  </header><!-- End Header -->
+
+  <!-- GAP fil-->
+  <div style="height:70px;"></div>
+
+
+<!-- Modal -->
+<div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="loginModalLabel">Login</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+       <form action="/login/proc/l:n" method="post">
+          <div class="form-floating mb-3">
+            <input type="email" class="form-control rounded-3" id="floatingInput" placeholder="name@example.edu" name="memEmail">
+            <label for="floatingInput">Email address</label>
+          </div>
+          <div class="form-floating mb-3">
+            <input type="password" class="form-control rounded-3" id="floatingPassword" placeholder="Password" name="memPassword">
+            <label for="floatingPassword">Password</label>
+          </div>
+          <button class="w-100 mb-2 btn btn-lg rounded-3 btn-primary" type="submit">Login</button>
+          <small class="text-body-secondary"><!--<a href="/createaccount">Create Account</a> &nbsp;|&nbsp; --><a href="/passwordreset">Password Reset</a></small>
+
+
+		
+		<input type="hidden" name="origin" value="https://tccns.org/index.php?param=download/tccns_master.xlsx">
+
+        </form>
+      </div>
+
+      <div class="modal-body">
+	<div class="alert alert-light" role="alert" style="font-size:10pt;">
+  	TCCNS system was recently upgraded, please login with your email address. Your old username will no longer work, <b>please use <a href="/passwordreset">password reset</a> if this is your first time login in since system upgrade</b>. If you're unsure what email address was tied to the old account, please check your school's contact page.
+	<br><br>
+	<strong>New Users</strong> If you need access to modify courses please ask your school's TCCNS admin to add you to the system as an admin. Existing admins are listed under each school's contact page. If the listed admin(s) are out of date then please contact <a href="mailto:tccns@tacrao.org">tccns@tacrao.org</a>.
+	</div>
+      </div>
+
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div style="height:75px;"></div>
+        <section class="container ft-steps-numbers">
+          <div class="row section">
+
+            <header class="sec-heading ws-s">
+              <h2>PAGE DOES NOT EXIST</h2>
+            </header>
+     
+          </div><!-- / .row -->
+        </section><!-- / .container -->
+  <!-- ======= Footer ======= -->
+  <footer id="footer">
+
+    <div class="container d-md-flex py-4">
+
+      <div class="me-md-auto text-center text-md-start">
+        <div class="copyright">
+          &copy; Texas Common Course Numbering System 2024. All Rights Reserved.<br>
+	  If you are a student or parent with general inquiries, please contact the school directly regarding their data on this site.<br>
+	  If you are college or university and have account questions or database manager update requests, please contact us at <a href="mailto:tccns@tacrao.org">tccns@tacrao.org</a>.
+
+        </div>
+        <div class="credits" style="font-size:9pt;">
+		<br>Developed by <a href="https://tacrao.org/" target="_blank">TACRAO</a> | <a href="https://paleywu.com/web" target="_blank">PWS</a><br><span style="font-size:7pt;">Licenses/Libraries: <a href="https://bootstrapmade.com/" target="_blank">BootstrapMade</a> | <a href="https://github.com/PHPOffice" target="_blank">PHPOffice</a></span>
+    
+        </div>
+      </div>
+
+
+    </div>
+
+
+  <div class="container">
+  <div class="row">
+    <div class="col-5">
+    </div>
+    <div class="col-6 p-1" style="text-align:right;font-size:8px;">
+
+          486624b
+	  |0.050881147384644s    </div>
+    <div class="col-1">
+    </div>
+  </div>
+  </div>
+
+
+  </footer><!-- End Footer -->
+
+  <div id="preloader"></div>
+  <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+  <!-- Vendor JS Files -->
+  <script src="/assets/vendor/aos/aos.js"></script>
+  <script src="/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="/assets/vendor/glightbox/js/glightbox.min.js"></script>
+  <script src="/assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
+  <script src="/assets/vendor/swiper/swiper-bundle.min.js"></script>
+  <script src="/assets/js/main.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdn.datatables.net/v/bs5/dt-2.1.4/datatables.min.js"></script>
+
+
+
+
+</body>
+
+</html>

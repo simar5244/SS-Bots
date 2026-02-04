@@ -1,0 +1,90 @@
+{
+  "ENGL 1301": [
+    {
+      "tccnsCode": "ENGL 1301",
+      "courseName": "Composition I",
+      "credits": 3,
+      "institutions": [
+        "All Texas Community Colleges"
+      ],
+      "notes": "Satisfies TTU ENGL 1301 requirement"
+    }
+  ],
+  "ENGL 1302": [
+    {
+      "tccnsCode": "ENGL 1302",
+      "courseName": "Composition II",
+      "credits": 3,
+      "institutions": [
+        "All Texas Community Colleges"
+      ],
+      "notes": "Satisfies TTU ENGL 1302 requirement"
+    }
+  ],
+  "MATH 1451": [
+    {
+      "tccnsCode": "MATH 2413",
+      "courseName": "Calculus I",
+      "credits": 4,
+      "institutions": [
+        "All Texas Community Colleges"
+      ],
+      "notes": "Satisfies TTU MATH 1451 requirement"
+    }
+  ],
+  "HIST 2300": [
+    {
+      "tccnsCode": "HIST 1301",
+      "courseName": "United States History I",
+      "credits": 3,
+      "institutions": [
+        "All Texas Community Colleges"
+      ],
+      "notes": "Satisfies TTU HIST 2300 requirement"
+    }
+  ],
+  "GOVT 2305": [
+    {
+      "tccnsCode": "GOVT 2305",
+      "courseName": "Federal Government",
+      "credits": 3,
+      "institutions": [
+        "All Texas Community Colleges"
+      ],
+      "notes": "Satisfies TTU GOVT 2305 requirement"
+    }
+  ],
+  "BIOL 1403": [
+    {
+      "tccnsCode": "BIOL 1406",
+      "courseName": "Biology for Science Majors I",
+      "credits": 4,
+      "institutions": [
+        "All Texas Community Colleges"
+      ],
+      "notes": "Satisfies TTU BIOL 1403 requirement"
+    }
+  ],
+  "CHEM 1307": [
+    {
+      "tccnsCode": "CHEM 1311",
+      "courseName": "General Chemistry I",
+      "credits": 3,
+      "institutions": [
+        "All Texas Community Colleges"
+      ],
+      "notes": "Satisfies TTU CHEM 1307 requirement"
+    }
+  ],
+  "PHYS 1308": [
+    {
+      "tccnsCode": "PHYS 1301",
+      "courseName": "College Physics I",
+      "credits": 3,
+      "institutions": [
+        "All Texas Community Colleges"
+      ],
+      "notes": "Satisfies TTU PHYS 1308 requirement"
+    }
+  ]
+}

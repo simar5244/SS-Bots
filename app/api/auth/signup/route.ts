@@ -1,0 +1,45 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { dbService } from '@/lib/db'
+import { signToken } from '@/lib/auth'
+import bcrypt from 'bcryptjs'
+
+export async function POST(request: NextRequest) {
+  try {
+    const { name, email, password } = await request.json()
+
+    if (!name || !email || !password) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      )
+    }
+
+    const existingUser = await dbService.findUserByEmail(email)
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'User already exists' },
+        { status: 400 }
+      )
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10)
+    const user = await dbService.createUser(email, hashedPassword, name)
+
+    const token = signToken(user.id)
+
+    return NextResponse.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+    })
+  } catch (error) {
+    console.error('Signup error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}

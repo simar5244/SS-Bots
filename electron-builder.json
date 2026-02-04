@@ -1,0 +1,46 @@
+{
+  "appId": "com.aiservices.app",
+  "productName": "AI Services",
+  "directories": {
+    "output": "dist",
+    "buildResources": "build"
+  },
+  "files": [
+    ".next/**/*",
+    "app/**/*",
+    "lib/**/*",
+    "components/**/*",
+    "models/**/*",
+    "public/**/*",
+    "electron/**/*",
+    "backend/**/*",
+    "node_modules/**/*",
+    "package.json",
+    "next.config.js",
+    "tsconfig.json",
+    "tailwind.config.js",
+    "postcss.config.js",
+    ".env"
+  ],
+  "npmRebuild": false,
+  "buildDependenciesFromSource": false,
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      }
+    ],
+    "artifactName": "${productName}-Setup-${version}.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowElevation": true,
+    "perMachine": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "AI Services",
+    "deleteAppDataOnUninstall": false,
+    "runAfterFinish": true
+  }
+}

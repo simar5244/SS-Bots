@@ -1,0 +1,14 @@
+node_modules
+.next
+node-portable
+dist
+data
+.env.local
+*.log
+.DS_Store
+tsconfig.tsbuildinfo
+
+# Installer build files
+installer-output
+*.exe
+*.zip
