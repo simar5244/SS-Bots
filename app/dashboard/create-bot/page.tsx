@@ -138,7 +138,7 @@ export default function CreateBot() {
               Back
             </button>
           </Link>
-          <span className="text-2xl font-bold">Create Bot</span>
+          <span className="text-2xl font-bold">Create Database Bot</span>
         </div>
       </header>
 

@@ -7,14 +7,18 @@ let nextServer;
 
 function startNextServer() {
   return new Promise((resolve) => {
+    // Use npm start for production
     nextServer = spawn('npm', ['start'], {
       cwd: path.join(__dirname, '..'),
       shell: true,
+      windowsHide: true, // Hide console window on Windows
     });
     
     nextServer.stdout.on('data', (data) => {
-      console.log(`Next.js: ${data}`);
-      if (data.toString().includes('Local:')) {
+      const output = data.toString();
+      console.log(`Next.js: ${output}`);
+      // Next.js production server starts with "Ready" message
+      if (output.includes('Local:') || output.includes('Ready') || output.includes('started server')) {
         resolve();
       }
     });

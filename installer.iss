@@ -58,17 +58,18 @@ Source: "tsconfig.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "tailwind.config.js"; DestDir: "{app}"; Flags: ignoreversion
 Source: "postcss.config.js"; DestDir: "{app}"; Flags: ignoreversion
 
-; Launcher script
+; Launcher scripts
 Source: "dist\START_APP.bat"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\START_APP_HIDDEN.vbs"; DestDir: "{app}"; Flags: ignoreversion
 
 ; Icon
 Source: "build\icon.ico"; DestDir: "{app}\build"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\START_APP.bat"; IconFilename: "{app}\build\icon.ico"
+Name: "{group}\{#MyAppName}"; Filename: "wscript.exe"; Parameters: """{app}\START_APP_HIDDEN.vbs"" ""{app}\START_APP.bat"""; IconFilename: "{app}\build\icon.ico"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\START_APP.bat"; IconFilename: "{app}\build\icon.ico"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "wscript.exe"; Parameters: """{app}\START_APP_HIDDEN.vbs"" ""{app}\START_APP.bat"""; IconFilename: "{app}\build\icon.ico"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\START_APP.bat"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent shellexec
+Filename: "wscript.exe"; Parameters: """{app}\START_APP_HIDDEN.vbs"" ""{app}\START_APP.bat"""; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent
 

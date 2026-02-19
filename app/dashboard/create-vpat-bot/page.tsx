@@ -79,7 +79,12 @@ export default function CreateVPATBot() {
   return (
     <div className="min-h-screen bg-white text-black">
       <header className="border-b border-black/10">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-4">
+          <Link href="/dashboard">
+            <button className="px-4 py-2 hover:bg-black/5 rounded-lg transition-colors">
+              Back
+            </button>
+          </Link>
           <span className="text-2xl font-bold">Create VPAT Bot</span>
         </div>
       </header>

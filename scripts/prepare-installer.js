@@ -102,8 +102,10 @@ async function main() {
   });
   console.log('✓ Application files copied\n');
 
-  // Step 5: Create START_APP.bat
-  console.log('[5/6] Creating launcher script...');
+  // Step 5: Create START_APP.bat and VBS launcher
+  console.log('[5/6] Creating launcher scripts...');
+  
+  // Main batch script (hidden by VBS)
   const launcherScript = `@echo off
 setlocal
 
@@ -111,37 +113,29 @@ set "SCRIPT_DIR=%~dp0"
 set "NODE_DIR=%SCRIPT_DIR%node-portable"
 set "PATH=%NODE_DIR%;%PATH%"
 
-echo ========================================
-echo Starting SS Bots...
-echo ========================================
-echo.
-echo The app will open in your browser at http://localhost:3000
-echo.
-echo Keep this window open while using the app
-echo Press Ctrl+C to stop the server
-echo.
-
 cd /d "%SCRIPT_DIR%"
 
 :: Check if .env exists, if not copy from example
 if not exist ".env" (
     if exist ".env.example" (
-        echo Creating .env file from .env.example...
-        copy ".env.example" ".env"
-        echo.
-        echo IMPORTANT: Please edit .env file and add your API keys
-        echo.
-        pause
+        copy ".env.example" ".env" >nul 2>&1
     )
 )
 
-call "%NODE_DIR%\\npm.cmd" start
-
-pause
+:: Start the Electron app
+start "" "%NODE_DIR%\\node.exe" "%SCRIPT_DIR%\\node_modules\\electron\\cli.js" .
 `;
 
   fs.writeFileSync(path.join(DIST_DIR, 'START_APP.bat'), launcherScript);
-  console.log('✓ Launcher created\n');
+  
+  // VBS script to run batch file hidden
+  const vbsScript = `Set WshShell = CreateObject("WScript.Shell")
+WshShell.Run chr(34) & WScript.Arguments(0) & chr(34), 0
+Set WshShell = Nothing
+`;
+  
+  fs.writeFileSync(path.join(DIST_DIR, 'START_APP_HIDDEN.vbs'), vbsScript);
+  console.log('✓ Launcher scripts created\n');
 
   // Step 6: Create icon if it doesn't exist
   console.log('[6/6] Checking icon file...');
