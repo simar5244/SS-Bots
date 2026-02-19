@@ -915,12 +915,11 @@ export default function CreateTranscriptBotPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <Button
-                  onClick={() => window.open(`/transcript-bot/${createdBot.shareableLink}`, '_blank')}
-                  className="bg-black hover:bg-gray-800 text-white"
-                >
-                  Use Bot
-                </Button>
+                <Link href={`/transcript-bot/${createdBot.shareableLink}`}>
+                  <Button className="bg-black hover:bg-gray-800 text-white">
+                    Use Bot
+                  </Button>
+                </Link>
                 <Button
                   onClick={() => setStep(2)}
                   className="bg-purple-600 hover:bg-purple-700 text-white"

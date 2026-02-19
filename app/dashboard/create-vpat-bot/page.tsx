@@ -171,12 +171,11 @@ export default function CreateVPATBot() {
               </div>
 
             <div className="flex gap-4">
-              <button
-                onClick={() => window.open(`/vpat/submit/${shareableLink}`, '_blank')}
-                className="flex-1 py-3 bg-black text-white rounded-lg font-medium hover:bg-black/80 transition-colors"
-              >
-                Use Bot
-              </button>
+              <Link href={`/vpat/submit/${shareableLink}`} className="flex-1">
+                <button className="w-full py-3 bg-black text-white rounded-lg font-medium hover:bg-black/80 transition-colors">
+                  Use Bot
+                </button>
+              </Link>
               <Link href="/dashboard" className="flex-1">
                 <button className="w-full py-3 bg-white border-2 border-black text-black rounded-lg font-medium hover:bg-black hover:text-white transition-colors">
                   Back to Dashboard
