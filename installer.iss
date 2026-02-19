@@ -38,8 +38,6 @@ ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 DisableProgramGroupPage=yes
 UninstallDisplayIcon={app}\{#MyAppExeName}
-SignTool=bypassed
-SignedUninstaller=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
