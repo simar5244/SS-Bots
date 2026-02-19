@@ -3,9 +3,10 @@
 
 #define MyAppName "SS Bots"
 #define MyAppVersion "1.0.0"
-#define MyAppPublisher "SS Bots"
-#define MyAppURL "https://yourwebsite.com"
+#define MyAppPublisher "SS Bots Inc"
+#define MyAppURL "https://ssbots.com"
 #define MyAppExeName "SS Bots.exe"
+#define MyAppSupportEmail "support@ssbots.com"
 
 [Setup]
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
@@ -15,14 +16,17 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-AppContact=support@ssbots.com
-AppComments=AI-powered bot management system
+AppContact={#MyAppSupportEmail}
+AppComments=AI-powered bot management and automation system for database, transcript, and VPAT processing
+AppReadmeFile=https://ssbots.com/readme
 VersionInfoVersion={#MyAppVersion}
 VersionInfoCompany={#MyAppPublisher}
-VersionInfoDescription=SS Bots Application
-VersionInfoCopyright=Copyright (C) 2026 SS Bots
+VersionInfoDescription=SS Bots - AI Bot Management Platform
+VersionInfoCopyright=Copyright (C) 2026 {#MyAppPublisher}. All rights reserved.
 VersionInfoProductName={#MyAppName}
 VersionInfoProductVersion={#MyAppVersion}
+VersionInfoTextVersion={#MyAppVersion}
+VersionInfoOriginalFileName=SSBots-Setup-{#MyAppVersion}.exe
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes

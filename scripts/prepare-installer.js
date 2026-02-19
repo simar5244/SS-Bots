@@ -123,7 +123,7 @@ if not exist ".env" (
 )
 
 :: Start the Electron app
-start "" "%SCRIPT_DIR%\\node_modules\\electron\\dist\\electron.exe" "%SCRIPT_DIR%"
+start "" "%SCRIPT_DIR%\\node_modules\\electron\\dist\\electron.exe" .
 `;
 
   fs.writeFileSync(path.join(DIST_DIR, 'START_APP.bat'), launcherScript);
