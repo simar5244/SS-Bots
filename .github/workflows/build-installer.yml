@@ -32,12 +32,6 @@ jobs:
       - name: Build Next.js application
         run: npm run build
       
-      - name: Install production dependencies
-        run: |
-          cd dist/app
-          npm install --production --legacy-peer-deps
-          cd ../..
-      
       - name: Copy build files
         run: |
           xcopy /E /I /Y .next dist\app\.next
