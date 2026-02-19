@@ -914,25 +914,12 @@ export default function CreateTranscriptBotPage() {
                 <p className="text-xl font-semibold text-gray-900">{createdBot.name}</p>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <Button
                   onClick={() => window.open(`/transcript-bot/${createdBot.shareableLink}`, '_blank')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-black hover:bg-gray-800 text-white"
                 >
-                  <ExternalLink className="w-4 h-4 mr-2" />
                   Use Bot
-                </Button>
-                <Button
-                  onClick={() => {
-                    navigator.clipboard.writeText(
-                      `${window.location.origin}/transcript-bot/${createdBot.shareableLink}`
-                    )
-                    alert('Shareable link copied!')
-                  }}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                >
-                  <Copy className="w-4 h-4 mr-2" />
-                  Share Bot
                 </Button>
                 <Button
                   onClick={() => setStep(2)}
@@ -941,22 +928,6 @@ export default function CreateTranscriptBotPage() {
                   Edit Bot
                 </Button>
               </div>
-
-              <div className="bg-gray-50 rounded-lg p-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Shareable Link
-                </label>
-                <code className="block bg-white px-4 py-2 rounded border text-gray-700 text-sm break-all">
-                  {`${window.location.origin}/transcript-bot/${createdBot.shareableLink}`}
-                </code>
-              </div>
-
-              <Button
-                onClick={handleCreateAnother}
-                className="w-full bg-gray-200 hover:bg-gray-300 text-gray-900"
-              >
-                Create Another Bot
-              </Button>
             </div>
           </div>
         )}

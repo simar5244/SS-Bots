@@ -5,7 +5,7 @@ import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { homedir } from 'os'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key'
 const UPLOAD_DIR = join(homedir(), 'Desktop', 'db', 'transcript-uploads')
 
 export async function POST(

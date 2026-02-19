@@ -114,10 +114,20 @@ export default function Dashboard() {
     }
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      // Call logout API to clear server-side cookie
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+      })
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
+    
+    // Clear client-side storage
     localStorage.removeItem('token')
     localStorage.removeItem('user')
-    router.push('/')
+    router.push('/login')
   }
 
   return (
@@ -147,7 +157,7 @@ export default function Dashboard() {
           </div>
           <div className="flex gap-3">
             <Link href="/dashboard/create-transcript-bot">
-              <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+              <button className="px-6 py-3 bg-white border-2 border-black text-black rounded-lg hover:bg-black hover:text-white transition-colors font-medium">
                 Transcript Bot
               </button>
             </Link>
@@ -157,8 +167,8 @@ export default function Dashboard() {
               </button>
             </Link>
             <Link href="/dashboard/create-bot">
-              <button className="px-6 py-3 bg-black text-white rounded-lg hover:bg-black/80 transition-colors font-medium">
-                Create Bot
+              <button className="px-6 py-3 bg-white border-2 border-black text-black rounded-lg hover:bg-black hover:text-white transition-colors font-medium">
+                Database Bot
               </button>
             </Link>
           </div>
@@ -202,7 +212,7 @@ export default function Dashboard() {
             
             {/* VPAT Bots */}
             {vpatBots.map((vpatBot) => (
-              <Link key={vpatBot.id} href={`/dashboard/vpat-submission/${vpatBot.id}`}>
+              <Link key={vpatBot.id} href={`/dashboard/vpat-bot/${vpatBot.id}`}>
                 <div className="p-6 border-2 border-black/10 rounded-2xl hover:border-black/30 transition-all cursor-pointer group">
                   <div className="flex items-start justify-between mb-4">
                     <span className="text-2xl font-bold">VPAT</span>
@@ -216,7 +226,6 @@ export default function Dashboard() {
                   </div>
                   <h3 className="text-xl font-bold mb-2">{vpatBot.name}</h3>
                   <p className="text-sm text-black/60 mb-2">Processed: {vpatBot.processedCount} documents</p>
-                  <p className="text-xs text-black/40">Share code: {vpatBot.shareableLink}</p>
                 </div>
               </Link>
             ))}
@@ -237,7 +246,6 @@ export default function Dashboard() {
                   </div>
                   <h3 className="text-xl font-bold mb-2">{transcriptBot.name}</h3>
                   <p className="text-sm text-black/60 mb-2">Evaluations: {transcriptBot.evaluationCount}</p>
-                  <p className="text-xs text-black/40">Share code: {transcriptBot.shareableLink}</p>
                 </div>
               </Link>
             ))}

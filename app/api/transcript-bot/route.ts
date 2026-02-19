@@ -6,7 +6,7 @@ import { join } from 'path'
 import { homedir } from 'os'
 import { createTranscriptBotService } from '@/lib/transcript-bot-loader'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key'
 const UPLOAD_DIR = join(homedir(), 'Desktop', 'db', 'transcript-bot-uploads')
 
 export async function POST(req: NextRequest) {

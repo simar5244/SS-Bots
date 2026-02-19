@@ -3,7 +3,7 @@ import { dbService } from '@/lib/db'
 import { getBatchResults } from '@/lib/vpat-multi-processor'
 import jwt from 'jsonwebtoken'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key'
 
 export async function GET(
   req: NextRequest,

@@ -5,7 +5,7 @@ import { dbService } from '@/lib/db'
 import { processVPATSubmission } from '@/lib/vpat-processor'
 import jwt from 'jsonwebtoken'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key'
 const UPLOAD_DIR = join(process.env.HOME || '', 'Desktop', 'db', 'vpat-submissions')
 
 export async function POST(

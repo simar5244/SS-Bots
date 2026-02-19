@@ -201,13 +201,6 @@ export default function TranscriptBotInstancePage() {
             >
               Back to Dashboard
             </Button>
-            <Button
-              onClick={() => window.open(shareableUrl, '_blank')}
-              className="bg-black hover:bg-gray-800 text-white"
-            >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Try Bot
-            </Button>
           </div>
         </div>
 
@@ -219,7 +212,7 @@ export default function TranscriptBotInstancePage() {
 
           <Card className="p-6 bg-white border border-gray-200">
             <h3 className="text-sm font-medium text-gray-600 mb-2">Status</h3>
-            <Badge className={bot.isActive ? 'bg-green-500' : 'bg-gray-500'}>
+            <Badge className={bot.isActive ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'}>
               {bot.isActive ? 'Active' : 'Inactive'}
             </Badge>
           </Card>
@@ -237,24 +230,6 @@ export default function TranscriptBotInstancePage() {
             </Badge>
           </Card>
         </div>
-
-        <Card className="p-6 mb-6 bg-white border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Shareable Link</h3>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={shareableUrl}
-              readOnly
-              className="flex-1 px-4 py-3 bg-white border-2 border-gray-200 rounded-lg text-sm font-mono"
-            />
-            <Button
-              onClick={() => navigator.clipboard.writeText(shareableUrl)}
-              variant="outline"
-            >
-              <Copy className="w-4 h-4" />
-            </Button>
-          </div>
-        </Card>
 
         <Card className="p-6 mb-6 bg-white border border-gray-200">
           <div className="flex items-center justify-between mb-6">
@@ -372,7 +347,7 @@ export default function TranscriptBotInstancePage() {
                     <Button
                       onClick={() => deleteProgram(programIndex)}
                       size="sm"
-                      className="bg-white hover:bg-gray-50 text-red-600 border-2 border-gray-200"
+                      className="bg-white hover:bg-gray-50 text-red-600 border-2 border-gray-200 ml-4"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -443,11 +418,11 @@ export default function TranscriptBotInstancePage() {
                                     Add Course
                                   </Button>
                                 </div>
-                                {req.courses?.map((course: string, courseIndex: number) => (
+                                {req.courses?.map((course: any, courseIndex: number) => (
                                   <div key={courseIndex} className="flex items-center gap-2">
                                     <input
                                       type="text"
-                                      value={course}
+                                      value={typeof course === 'string' ? course : course.code || course.name || ''}
                                       onChange={(e) =>
                                         updateCourse(programIndex, reqIndex, courseIndex, e.target.value)
                                       }
@@ -485,7 +460,7 @@ export default function TranscriptBotInstancePage() {
                           )}
                           {req.courses && req.courses.length > 0 && (
                             <p className="text-sm text-gray-600 mt-1">
-                              Courses: {req.courses.join(', ')}
+                              Courses: {req.courses.map((c: any) => typeof c === 'string' ? c : c.code || c.name || JSON.stringify(c)).join(', ')}
                             </p>
                           )}
                         </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -13,11 +13,13 @@ import {
   FileText,
   TrendingUp,
   Award,
-  Clock
+  Clock,
+  ArrowLeft
 } from 'lucide-react'
 
 export default function TranscriptBotPublicPage() {
   const params = useParams()
+  const router = useRouter()
   const link = params.link as string
 
   const [bot, setBot] = useState<any>(null)
@@ -155,8 +157,19 @@ export default function TranscriptBotPublicPage() {
 
   if (isBatch && batchResults.length > 0) {
     return (
-      <div className="min-h-screen bg-white p-8 pt-16">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-white">
+        <header className="border-b border-black/10">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <button 
+              onClick={() => router.back()}
+              className="p-2 hover:bg-black/5 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+          </div>
+        </header>
+        <div className="p-8">
+          <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -289,14 +302,26 @@ export default function TranscriptBotPublicPage() {
             </Button>
           </div>
         </div>
+        </div>
       </div>
     )
   }
 
   if (evaluation) {
     return (
-      <div className="min-h-screen bg-white p-8 pt-16">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-white">
+        <header className="border-b border-black/10">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <button 
+              onClick={() => router.back()}
+              className="p-2 hover:bg-black/5 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+          </div>
+        </header>
+        <div className="p-8">
+          <div className="max-w-4xl mx-auto">
             {evaluation.status === 'completed' && evaluation.finalReport ? (
               <div className="space-y-8">
                 <div className="text-center">
@@ -442,42 +467,66 @@ export default function TranscriptBotPublicPage() {
               </div>
             )}
         </div>
+        </div>
       </div>
     )
   }
 
   if (evaluationId) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-white pt-16">
-        <Card className="p-12 max-w-md text-center border border-gray-200">
-          <Loader2 className="w-16 h-16 animate-spin text-black mx-auto mb-6" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Processing Your Transcripts</h2>
-          <p className="text-gray-600 mb-4">
-            This may take a few minutes. Please don't close this page.
-          </p>
-          <div className="space-y-2 text-sm text-gray-500">
-            <p>✓ Parsing transcripts</p>
-            <p>✓ Matching courses with TCCNS</p>
-            <p>✓ Evaluating requirements</p>
-            <p className="flex items-center justify-center gap-2">
-              <Clock className="w-4 h-4 animate-pulse" />
-              Generating report...
-            </p>
+      <div className="min-h-screen bg-white">
+        <header className="border-b border-black/10">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <button 
+              onClick={() => router.back()}
+              className="p-2 hover:bg-black/5 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
           </div>
+        </header>
+        <div className="flex items-center justify-center min-h-[calc(100vh-73px)]">
+          <Card className="p-12 max-w-md text-center border border-gray-200">
+            <Loader2 className="w-16 h-16 animate-spin text-black mx-auto mb-6" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Processing Your Transcripts</h2>
+            <p className="text-gray-600 mb-4">
+              This may take a few minutes. Please don't close this page.
+            </p>
+            <div className="space-y-2 text-sm text-gray-500">
+              <p>✓ Parsing transcripts</p>
+              <p>✓ Matching courses with TCCNS</p>
+              <p>✓ Evaluating requirements</p>
+              <p className="flex items-center justify-center gap-2">
+                <Clock className="w-4 h-4 animate-pulse" />
+                Generating report...
+              </p>
+            </div>
         </Card>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-white p-8 pt-16">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">{bot.name}</h1>
-          <p className="text-lg text-gray-600">
-            Upload your transcripts for degree requirement evaluation
-          </p>
+    <div className="min-h-screen bg-white">
+      <header className="border-b border-black/10">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <button 
+            onClick={() => router.back()}
+            className="p-2 hover:bg-black/5 rounded-lg transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
         </div>
+      </header>
+      <div className="p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">{bot.name}</h1>
+            <p className="text-lg text-gray-600">
+              Upload your transcripts for degree requirement evaluation
+            </p>
+          </div>
 
         <div className="p-8">
           <div className="space-y-6">
@@ -571,6 +620,7 @@ export default function TranscriptBotPublicPage() {
               </p>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>

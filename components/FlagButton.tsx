@@ -65,18 +65,17 @@ export default function FlagButton({
     <>
       <Button
         onClick={() => setShowModal(true)}
-        size="sm"
         className="bg-orange-500 hover:bg-orange-600 text-white"
       >
-        <Flag className="w-4 h-4 mr-1" />
+        <Flag className="w-4 h-4 mr-2" />
         Flag Issue
       </Button>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Flag Issue for Admin Review</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Report an Issue</h3>
               <button
                 onClick={() => setShowModal(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -86,44 +85,22 @@ export default function FlagButton({
             </div>
 
             <div className="space-y-4">
-              {originalValue && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Original Value
-                  </label>
-                  <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm">
-                    {originalValue}
-                  </div>
-                </div>
-              )}
-
-              {editedValue && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Your Edit
-                  </label>
-                  <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded text-sm">
-                    {editedValue}
-                  </div>
-                </div>
-              )}
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Describe the Issue
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  What's wrong?
                 </label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Explain what's wrong and what should be corrected in the source data..."
-                  className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-black transition-colors resize-none"
-                  rows={4}
+                  placeholder="Describe the issue you found. For example: 'The course code is incorrect' or 'This requirement is missing'"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-black transition-colors resize-none"
+                  rows={5}
                 />
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <p className="text-xs text-yellow-900">
-                  <strong>Note:</strong> This flag will be sent to administrators to fix the issue in the original data source. Your edits will be saved separately.
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-900">
+                  <strong>💡 Tip:</strong> Your report will be sent to administrators who will review and fix the issue. Your current edits will be saved separately.
                 </p>
               </div>
 

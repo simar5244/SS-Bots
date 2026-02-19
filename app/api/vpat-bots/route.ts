@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key'
 const UPLOAD_DIR = join(process.env.HOME || '', 'Desktop', 'db', 'vpat-uploads')
 
 export async function POST(req: NextRequest) {

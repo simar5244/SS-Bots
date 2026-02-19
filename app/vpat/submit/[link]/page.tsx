@@ -238,12 +238,7 @@ export default function VPATSubmitPage() {
             </p>
           </div>
 
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
-            <h3 className="font-bold mb-2">📋 Accepted Formats</h3>
-            <p className="text-sm text-blue-900">
-              PDF, DOC, DOCX, Excel (XLSX, XLS), CSV, JSON, TXT - Any format is accepted. Our AI will extract the data regardless of formatting.
-            </p>
-          </div>
+
 
           <div className="border-2 border-dashed border-black/20 rounded-lg p-12 text-center hover:border-black/40 transition-colors">
             <input
@@ -302,12 +297,7 @@ export default function VPATSubmitPage() {
             </div>
           )}
 
-          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-6">
-            <h3 className="font-bold mb-2">⚠️ Legal Notice</h3>
-            <p className="text-sm text-yellow-900">
-              This automated evaluation uses AI for analysis. Results should be reviewed by qualified accessibility professionals before making legal or compliance decisions. By submitting, you acknowledge this is an automated tool and not a substitute for professional accessibility auditing.
-            </p>
-          </div>
+
 
           <button
             onClick={handleSubmit}
@@ -322,9 +312,7 @@ export default function VPATSubmitPage() {
             }
           </button>
 
-          <div className="text-center text-sm text-black/40">
-            <p>Powered by AI • Legal-grade precision • Instant results</p>
-          </div>
+
         </div>
       </main>
     </div>

@@ -1,15 +1,23 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 export default function Login() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const errorParam = searchParams.get('error')
+    if (errorParam === 'session-expired') {
+      setError('Your session has expired. Please log in again.')
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,7 +40,12 @@ export default function Login() {
 
       localStorage.setItem('token', data.token)
       localStorage.setItem('user', JSON.stringify(data.user))
-      router.push('/dashboard')
+      
+      // Small delay to ensure cookie is set
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      const redirect = searchParams.get('redirect') || '/dashboard'
+      router.push(redirect)
     } catch (err) {
       setError('An error occurred. Please try again.')
     } finally {
