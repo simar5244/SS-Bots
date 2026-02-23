@@ -91,6 +91,22 @@ export default function VPATSubmitPage() {
     }))
   }
 
+  const normalizeImpactData = (impact?: {
+    numberOfStudents?: number
+    numberOfStaff?: number
+    cost?: number
+    isPublicUse?: boolean
+    documentDate?: string
+    vpatVersion?: string
+  }) => ({
+    numberOfStudents: impact?.numberOfStudents ?? 0,
+    numberOfStaff: impact?.numberOfStaff ?? 0,
+    cost: impact?.cost ?? 0,
+    isPublicUse: impact?.isPublicUse ?? false,
+    documentDate: impact?.documentDate || '0',
+    vpatVersion: impact?.vpatVersion || '0'
+  })
+
   const handleSubmit = async () => {
     if (files.length === 0) {
       setError('Please select at least one file to upload')
@@ -102,36 +118,25 @@ export default function VPATSubmitPage() {
       return
     }
 
-    for (const file of files) {
-      const impact = fileImpactData[file.name]
-      if (
-        !impact ||
-        impact.cost === undefined ||
-        impact.numberOfStudents === undefined ||
-        impact.numberOfStaff === undefined ||
-        impact.isPublicUse === undefined ||
-        !impact.documentDate ||
-        !impact.vpatVersion
-      ) {
-        setError(`Please complete required pre-upload inputs for ${file.name}: annual cost, public use, student users, staff users, document date, and VPAT version.`)
-        return
-      }
-    }
-
     setSubmitting(true)
     setError('')
 
     try {
       const formData = new FormData()
+      const normalizedImpactDataMap: {[key: string]: ReturnType<typeof normalizeImpactData>} = {}
+
+      files.forEach((file) => {
+        normalizedImpactDataMap[file.name] = normalizeImpactData(fileImpactData[file.name])
+      })
       
       if (files.length === 1) {
         // Single file submission
         formData.append('document', files[0])
-        formData.append('impactData', JSON.stringify(fileImpactData[files[0].name] || {}))
+        formData.append('impactData', JSON.stringify(normalizedImpactDataMap[files[0].name]))
       } else {
         // Multiple file submission
         files.forEach(file => formData.append('documents', file))
-        formData.append('impactDataMap', JSON.stringify(fileImpactData))
+        formData.append('impactDataMap', JSON.stringify(normalizedImpactDataMap))
       }
 
       const res = await fetch(`/api/vpat/submit/${link}`, {
@@ -357,10 +362,8 @@ export default function VPATSubmitPage() {
 
           {files.length > 0 && (
             <div className="bg-white border-2 border-black/10 rounded-lg p-6">
-              <h3 className="text-lg font-bold mb-4">Resource Information (Required Before Upload)</h3>
-              <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
-                <span className="font-semibold">Required before upload:</span> collect and enter real usage/cost values before VPAT upload and grading. If values are still 0, they are placeholders and will skew grading decisions.
-              </p>
+              <h3 className="text-lg font-bold mb-4">Resource Information</h3>
+
               <div className="space-y-4">
                 {files.map((file, index) => (
                   <div key={index} className="border border-black/10 rounded-lg p-4">
@@ -452,17 +455,7 @@ export default function VPATSubmitPage() {
                         />
                       </div>
                     </div>
-                    <div className="mt-3 rounded-md bg-blue-50 p-3 text-xs text-blue-900">
-                      <p className="font-medium">Note: These values affect your final grade. Grade B requires 0 students and no public use. Grade C requires ≤50 students, ≤50 staff, no public use, and &lt;$25k cost.</p>
-                      <p className="mt-2 text-blue-950">
-                        Current Values: {fileImpactData[file.name]?.numberOfStudents ?? 0} students, {fileImpactData[file.name]?.numberOfStaff ?? 0} staff, {fileImpactData[file.name]?.isPublicUse ? 'public use' : 'no public use'}, ${fileImpactData[file.name]?.cost ?? 0} annual cost
-                      </p>
-                      {(fileImpactData[file.name]?.numberOfStudents ?? 0) === 0 ||
-                       (fileImpactData[file.name]?.numberOfStaff ?? 0) === 0 ||
-                       (fileImpactData[file.name]?.cost ?? 0) === 0 ? (
-                        <p className="mt-1 text-amber-700">One or more fields are still 0. Confirm these are intentional and not placeholder defaults.</p>
-                      ) : null}
-                    </div>
+
                   </div>
                 ))}
               </div>

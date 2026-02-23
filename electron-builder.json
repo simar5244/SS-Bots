@@ -40,7 +40,8 @@
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
     "shortcutName": "AI Services",
-    "deleteAppDataOnUninstall": false,
+    "deleteAppDataOnUninstall": true,
+    "uninstallDisplayName": "AI Services",
     "runAfterFinish": true
   }
 }

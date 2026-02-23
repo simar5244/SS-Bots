@@ -140,6 +140,13 @@ interface VPATSubmission {
     documentDate?: string
     vpatVersion?: string
   }
+  platformReports?: Array<{
+    platform: string
+    fileName: string
+    analysis: any
+    criteriaCount: number
+    criteria?: any[]
+  }>
   createdAt: number
   completedAt?: number
 }
@@ -152,9 +159,26 @@ export default function VPATSubmissionDetail() {
   const [loading, setLoading] = useState(true)
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'criteria' | 'grading'>('overview')
+  const [activePlatform, setActivePlatform] = useState<string>('Default')
   const [scorecardResult, setScorecardResult] = useState<ScorecardResult | null>(null)
   const [expandedDisabilities, setExpandedDisabilities] = useState<Set<number>>(new Set())
   const [expandedWCAG, setExpandedWCAG] = useState<'2.0' | '2.1' | '2.2' | null>(null)
+
+  const availablePlatforms = useMemo(() => {
+    return submission?.platformReports?.map((report) => report.platform) || []
+  }, [submission?.platformReports])
+
+  const selectedPlatformReport = useMemo(() => {
+    if (!submission?.platformReports?.length) return null
+    return (
+      submission.platformReports.find((report) => report.platform === activePlatform) ||
+      submission.platformReports[0]
+    )
+  }, [submission?.platformReports, activePlatform])
+
+  const currentCriteria = useMemo(() => {
+    return selectedPlatformReport?.criteria || submission?.extractedData?.criteria || []
+  }, [selectedPlatformReport?.criteria, submission?.extractedData?.criteria])
   
   // Toggle disability dropdown
   const toggleDisability = (index: number) => {
@@ -187,6 +211,18 @@ export default function VPATSubmissionDetail() {
     setStaffCount(impact?.numberOfStaff ?? 0)
     setIsPublicUse(impact?.isPublicUse ?? false)
   }, [submission?.id])
+
+  useEffect(() => {
+    if (!submission) return
+    if (submission.platformReports?.length) {
+      const defaultPlatform = submission.platformReports[0].platform
+      if (!submission.platformReports.some((report) => report.platform === activePlatform)) {
+        setActivePlatform(defaultPlatform)
+      }
+      return
+    }
+    setActivePlatform('Default')
+  }, [submission?.id, submission?.platformReports, activePlatform])
 
   const renderWCAGExpandedDetails = (score: ScorecardResult['wcag21Score'], versionLabel: '2.0' | '2.1' | '2.2') => (
     <div className="mt-4 pt-4 border-t border-gray-300">
@@ -257,18 +293,46 @@ export default function VPATSubmissionDetail() {
     </div>
   )
 
-  const downloadGradingReport = () => {
-    if (!submission || !scorecardResult) return
+  const downloadGradingReport = async () => {
+    if (!submission) return
+
+    // Prefer server-generated scorecard for the selected platform
+    try {
+      const platformQuery = selectedPlatformReport?.platform
+      const url = platformQuery
+        ? `/api/vpat/scorecard/${submission.id}?platform=${encodeURIComponent(platformQuery)}`
+        : `/api/vpat/scorecard/${submission.id}`
+
+      const res = await fetch(url)
+      if (!res.ok) {
+        throw new Error(`Failed to download server scorecard: ${res.status}`)
+      }
+
+      const blob = await res.blob()
+      const downloadLink = document.createElement('a')
+      downloadLink.href = URL.createObjectURL(blob)
+      downloadLink.download = selectedPlatformReport?.fileName || submission.generatedScorecard?.fileName || `vpat_scorecard_${submission.id}.xlsx`
+      document.body.appendChild(downloadLink)
+      downloadLink.click()
+      document.body.removeChild(downloadLink)
+      URL.revokeObjectURL(downloadLink.href)
+      return
+    } catch (err) {
+      console.warn('Falling back to client-generated comprehensive workbook:', err)
+    }
+
+    if (!scorecardResult) return
 
     const workbook = XLSX.utils.book_new()
 
-    const extractedCriteria = submission.extractedData?.criteria || []
+    const extractedCriteria = currentCriteria
 
     const overviewRows = [
       ['VPAT Comprehensive Report'],
       ['Generated At', new Date().toLocaleString()],
       ['Submission ID', submission.id],
       ['Product Name', submission.extractedData?.productName || 'N/A'],
+      ['Platform', selectedPlatformReport?.platform || 'Default'],
       ['Vendor Name', submission.extractedData?.vendorName || 'N/A'],
       ['VPAT Version', submission.extractedData?.vpatVersion || 'N/A'],
       ['Report Date', submission.extractedData?.reportDate || 'N/A'],
@@ -362,23 +426,19 @@ export default function VPATSubmissionDetail() {
       ])
     ]
 
-    const buildDetailedRows = (label: string, details: Array<{
-      criterion: string
-      impactCategory: string
-      supportStatus: string
-      points: number
-      isExclusive: boolean
-    }>) => [
-      [`WCAG ${label} Detailed Criteria`],
-      ['Criterion', 'Impact Category', 'Pass/Fail Status', 'Points', `Exclusive to WCAG ${label}`],
-      ...details.map((detail) => [
-        detail.criterion,
-        detail.impactCategory,
-        detail.supportStatus,
-        detail.points,
-        detail.isExclusive ? 'Yes' : 'No'
-      ])
-    ]
+    const buildDetailedRows = (label: '2.0' | '2.1' | '2.2', details: any[]) => {
+      return [
+        [`WCAG ${label} Criteria Details`],
+        ['Criterion', 'Status', 'Impact Category', 'Points', 'Exclusive?'],
+        ...details.map((d) => [
+          d.criterion,
+          d.supportStatus,
+          d.impactCategory,
+          d.points,
+          d.isExclusive ? 'Yes' : 'No'
+        ])
+      ]
+    }
 
     const wcag20DetailRows = buildDetailedRows('2.0', scorecardResult.wcag20Score.criteriaDetails)
     const wcag21DetailRows = buildDetailedRows('2.1', scorecardResult.wcag21Score.criteriaDetails)
@@ -390,7 +450,10 @@ export default function VPATSubmissionDetail() {
         if (impact.notFullySupportedCriteria.length === 0) {
           return [[impact.disability, 'None']]
         }
-        return impact.notFullySupportedCriteria.map((criterion) => [impact.disability, criterion])
+        return impact.notFullySupportedCriteria.map((criterion) => [
+          impact.disability,
+          criterion
+        ])
       })
     ]
 
@@ -404,7 +467,8 @@ export default function VPATSubmissionDetail() {
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(disabilityCriteriaRows), 'Disability Criteria')
 
     const safeProduct = (submission.extractedData?.productName || 'Product').replace(/[^a-zA-Z0-9_-]/g, '_')
-    XLSX.writeFile(workbook, `vpat_comprehensive_report_${safeProduct}_${Date.now()}.xlsx`)
+    const platformSuffix = selectedPlatformReport?.platform ? `_${selectedPlatformReport.platform.replace(/[^a-zA-Z0-9]/g, '_')}` : ''
+    XLSX.writeFile(workbook, `vpat_comprehensive_report_${safeProduct}${platformSuffix}_${Date.now()}.xlsx`)
   }
 
   // Calculate scorecard results from extracted criteria
@@ -414,9 +478,9 @@ export default function VPATSubmissionDetail() {
     console.log('🔍 [SCORECARD DEBUG] criteria exists:', !!submission?.extractedData?.criteria)
     console.log('🔍 [SCORECARD DEBUG] Full extractedData:', submission?.extractedData)
     
-    if (submission?.extractedData?.criteria) {
+    if (currentCriteria.length > 0) {
       try {
-        const criteria = submission.extractedData.criteria
+        const criteria = currentCriteria
         
         console.log('🔍 [SCORECARD] Total criteria from Method 1:', criteria.length)
         console.log('🔍 [SCORECARD] Sample criterion:', criteria[0])
@@ -487,7 +551,7 @@ export default function VPATSubmissionDetail() {
         setScorecardResult(null)
       }
     }
-  }, [submission?.extractedData?.criteria, studentCount, staffCount, isPublicUse, annualCost])
+  }, [currentCriteria, studentCount, staffCount, isPublicUse, annualCost])
 
   useEffect(() => {
     let isMounted = true
@@ -510,7 +574,7 @@ export default function VPATSubmissionDetail() {
 
         // Only poll if not terminal and no polling is active
         if (!isTerminal && !pollingRef.current) {
-          const intervalMs = 30000 // Increased to 30 seconds to reduce API calls
+          const intervalMs = 5000 // Faster polling to reduce staleness
           pollingRef.current = setInterval(() => {
             fetchSubmission().then((updatedData) => {
               if (updatedData) {
@@ -521,8 +585,11 @@ export default function VPATSubmissionDetail() {
                   updatedStatus === 'needs_review'
 
                 if (updatedTerminal && pollingRef.current) {
-                  clearInterval(pollingRef.current)
-                  pollingRef.current = null
+                  // Fetch once more to ensure UI has freshest state, then stop
+                  fetchSubmission().finally(() => {
+                    clearInterval(pollingRef.current as NodeJS.Timeout)
+                    pollingRef.current = null
+                  })
                 }
               }
             })
@@ -552,6 +619,66 @@ export default function VPATSubmissionDetail() {
     }
   }, [params.id])
 
+  // Refresh when tab regains focus/visibility to avoid stale state
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchSubmission()
+    }
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        fetchSubmission()
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [])
+
+  const getCanonicalSubmissionId = (idParam: string): string => {
+    if (!idParam.includes('_')) return idParam
+    const parts = idParam.split('_')
+    const lastPart = parts[parts.length - 1]
+    if (!/^[0-9a-f]+$/i.test(lastPart)) {
+      return parts.slice(0, -1).join('_')
+    }
+    return idParam
+  }
+
+  useEffect(() => {
+    const rawId = String(params.id)
+    const canonicalId = getCanonicalSubmissionId(rawId)
+    if (rawId !== canonicalId) {
+      router.replace(`/dashboard/vpat-submission/${canonicalId}`)
+    }
+  }, [params.id, router])
+
+  const inferSubmissionStatus = (data: VPATSubmission): VPATSubmission['status'] => {
+    if (data.status !== 'processing') {
+      return data.status
+    }
+
+    const hasCompletionArtifacts = Boolean(data.generatedScorecard || data.completedAt)
+    const hasCompletionLog = Boolean(
+      data.processingLog?.some((log) =>
+        ['processing_completed', 'evaluation_completed', 'step13_files_saved', 'scorecard_generation_completed'].includes(log.step)
+      )
+    )
+
+    if (hasCompletionArtifacts || hasCompletionLog) {
+      if (data.validationResults && !data.validationResults.isValid) {
+        return 'needs_review'
+      }
+      return 'completed'
+    }
+
+    return 'processing'
+  }
+
   const fetchSubmission = async () => {
     try {
       const token = localStorage.getItem('token')
@@ -561,10 +688,11 @@ export default function VPATSubmissionDetail() {
         return null
       }
       
-      const res = await fetch(`/api/vpat-submissions/${params.id}`, {
+      const res = await fetch(`/api/vpat-submissions/${params.id}?t=${Date.now()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
-        }
+        },
+        cache: 'no-store'
       })
 
       if (res.status === 404) {
@@ -580,8 +708,52 @@ export default function VPATSubmissionDetail() {
       if (!res.ok) throw new Error('Failed to fetch submission')
 
       const data = await res.json()
-      setSubmission(data)
-      return data as VPATSubmission
+
+      let normalizedData = data as VPATSubmission
+
+      // Cross-check via bot submissions list in case the single-submission endpoint is stale
+      if (normalizedData.vpatBotId) {
+        try {
+          const submissionsRes = await fetch(
+            `/api/vpat-bots/${normalizedData.vpatBotId}/submissions?t=${Date.now()}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              },
+              cache: 'no-store'
+            }
+          )
+
+          if (submissionsRes.ok) {
+            const allSubmissions = await submissionsRes.json()
+            const canonicalId = getCanonicalSubmissionId(String(params.id))
+            const freshest = allSubmissions.find((s: VPATSubmission) => s.id === canonicalId)
+
+            if (freshest) {
+              // Prefer freshest status/details from list endpoint, preserve platform-specific shaping from detail endpoint
+              normalizedData = {
+                ...normalizedData,
+                ...freshest,
+                id: normalizedData.id,
+                extractedData: normalizedData.extractedData || freshest.extractedData,
+                generatedScorecard: normalizedData.generatedScorecard || freshest.generatedScorecard,
+                platformReports: normalizedData.platformReports || freshest.platformReports,
+                processingLog: normalizedData.processingLog || freshest.processingLog
+              }
+            }
+          }
+        } catch (fallbackErr) {
+          console.warn('Failed to cross-check latest submission status from bot submissions:', fallbackErr)
+        }
+      }
+
+      const inferredStatus = inferSubmissionStatus(normalizedData)
+      const finalData = inferredStatus === normalizedData.status
+        ? normalizedData
+        : { ...normalizedData, status: inferredStatus }
+
+      setSubmission(finalData)
+      return finalData
     } catch (error) {
       console.error('Fetch error:', error)
       return null
@@ -748,7 +920,10 @@ export default function VPATSubmissionDetail() {
               
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">VPAT Submission</h1>
-                <p className="text-sm text-gray-600">{submission.extractedData?.productName || submission.submittedDocument.fileName}</p>
+                <p className="text-sm text-gray-600">
+                  {submission.extractedData?.productName || submission.submittedDocument.fileName}
+                  {selectedPlatformReport?.platform ? ` • ${selectedPlatformReport.platform}` : ''}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -762,6 +937,32 @@ export default function VPATSubmissionDetail() {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
+        {availablePlatforms.length > 1 && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6 p-4">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">Platform Dashboard</h2>
+                <p className="text-xs text-gray-600">Toggle platform-specific criteria, grading, and analysis.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {availablePlatforms.map((platform) => (
+                  <button
+                    key={platform}
+                    onClick={() => setActivePlatform(platform)}
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
+                      activePlatform === platform
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                    }`}
+                  >
+                    {platform}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
           <div className="flex border-b border-gray-200">
@@ -953,18 +1154,18 @@ export default function VPATSubmissionDetail() {
 
                   <div className="grid grid-cols-3 gap-4 mb-6">
                     <div className="text-center p-4 bg-gray-50 rounded-lg">
-                      <div className="text-2xl font-bold text-gray-900">{submission.extractedData.criteria.length}</div>
+                      <div className="text-2xl font-bold text-gray-900">{currentCriteria.length}</div>
                       <div className="text-sm text-gray-600">Total Criteria</div>
                     </div>
                     <div className="text-center p-4 bg-green-50 rounded-lg">
                       <div className="text-2xl font-bold text-green-600">
-                        {submission.extractedData.criteria.filter((c: any) => c.scorecardEquivalent === 'Supports').length}
+                        {currentCriteria.filter((c: any) => c.scorecardEquivalent === 'Supports').length}
                       </div>
                       <div className="text-sm text-gray-600">Supports</div>
                     </div>
                     <div className="text-center p-4 bg-red-50 rounded-lg">
                       <div className="text-2xl font-bold text-red-600">
-                        {submission.extractedData.criteria.filter((c: any) => c.scorecardEquivalent === 'Does Not Support').length}
+                        {currentCriteria.filter((c: any) => c.scorecardEquivalent === 'Does Not Support').length}
                       </div>
                       <div className="text-sm text-gray-600">Not Supported</div>
                     </div>
@@ -1367,16 +1568,20 @@ export default function VPATSubmissionDetail() {
         )}
 
         {/* Criteria Tab */}
-        {activeTab === 'criteria' && submission.extractedData?.criteria && (
+        {activeTab === 'criteria' && currentCriteria.length > 0 && (
           <VPATCriteriaViewer
-            criteria={submission.extractedData.criteria}
-            productName={submission.extractedData.productName}
+            criteria={currentCriteria}
+            productName={
+              selectedPlatformReport?.platform
+                ? `${submission.extractedData?.productName || 'Product'} (${selectedPlatformReport.platform})`
+                : submission.extractedData?.productName
+            }
             submissionId={submission.id}
           />
         )}
 
         {/* OLD TABS REMOVED - Content moved to grading tab */}
-        {false && activeTab === 'wcag21' && (
+        {false && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">WCAG 2.1 Weighted Score</h2>
@@ -1418,7 +1623,7 @@ export default function VPATSubmissionDetail() {
           </div>
         )}
 
-        {false && activeTab === 'wcag22' && (
+        {false && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">WCAG 2.2 Weighted Score</h2>
@@ -1460,7 +1665,7 @@ export default function VPATSubmissionDetail() {
           </div>
         )}
 
-        {false && activeTab === 'wcag20' && (
+        {false && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">WCAG 2.0 Weighted Score</h2>
@@ -1502,7 +1707,7 @@ export default function VPATSubmissionDetail() {
           </div>
         )}
 
-        {false && activeTab === 'grade' && (
+        {false && (
           <div className="space-y-6">
             {scorecardResult ? (
               <>
@@ -1615,7 +1820,7 @@ export default function VPATSubmissionDetail() {
           </div>
         )}
 
-        {false && activeTab === 'disabilities' && (
+        {false && (
           <div className="space-y-6">
             {scorecardResult ? (
               <>
@@ -1700,7 +1905,7 @@ export default function VPATSubmissionDetail() {
           </div>
         )}
 
-        {false && activeTab === 'risk' && (
+        {false && (
           <div className="space-y-6">
             {scorecardResult ? (
               <>
@@ -1858,7 +2063,7 @@ export default function VPATSubmissionDetail() {
           </div>
         )}
 
-        {false && activeTab === 'vendor' && (
+        {false && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Vendor Contact Information</h2>
@@ -1911,7 +2116,7 @@ export default function VPATSubmissionDetail() {
           </div>
         )}
 
-        {false && activeTab === 'logs' && (
+        {false && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Processing Logs</h2>
             <div className="space-y-3">

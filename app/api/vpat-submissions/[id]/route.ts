@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 import { NextRequest, NextResponse } from 'next/server'
 import { dbService } from '@/lib/db'
 import jwt from 'jsonwebtoken'
@@ -31,10 +34,21 @@ export async function GET(
       }
     }
     
-    const submission = await dbService.findVPATSubmissionById(actualId)
+    let submission = await dbService.findVPATSubmissionById(actualId)
 
     if (!submission) {
       return NextResponse.json({ error: 'Submission not found' }, { status: 404 })
+    }
+
+    // Auto-heal stale status if processing finished but status not updated
+    if (
+      submission.status === 'processing' &&
+      (submission.generatedScorecard || submission.completedAt)
+    ) {
+      submission = await dbService.updateVPATSubmission(actualId, {
+        status: 'completed',
+        completedAt: submission.completedAt || Date.now()
+      }) || submission
     }
 
     // Verify user owns the bot that this submission belongs to

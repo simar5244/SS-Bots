@@ -140,6 +140,9 @@ export async function processVPATSubmissionDynamic(
     await dbService.addProcessingLog(submissionId, 'processing_started', 'success', 'Dynamic VPAT processing started')
     console.log('✅ Status updated to processing')
 
+    const submission = await dbService.findVPATSubmissionById(submissionId)
+    const impactFactorsUsed = submission?.impactFactors
+
     // STEP 1: Parse the submitted document (PDF, DOCX, etc.)
     console.log('📖 [STEP 1] Parsing document...')
     const vpatParser = new VPATDocumentParser()
@@ -335,7 +338,17 @@ export async function processVPATSubmissionDynamic(
         platform: report.platform,
         fileName: report.fileName,
         filePath,
-        analysis: report.analysis,
+        analysis: {
+          ...report.analysis,
+          impactFactorsUsed: impactFactorsUsed ? {
+            numberOfStudents: impactFactorsUsed.numberOfStudents,
+            numberOfStaff: impactFactorsUsed.numberOfStaff,
+            cost: impactFactorsUsed.cost,
+            isPublicUse: impactFactorsUsed.isPublicUse,
+            documentDate: impactFactorsUsed.documentDate,
+            vpatVersion: impactFactorsUsed.vpatVersion
+          } : undefined
+        },
         criteriaCount: report.rows.length,
         criteria: ((report as any).criteria || []).map((c: any) => ({
           criterionId: c.criterionId,
@@ -561,6 +574,14 @@ export async function processVPATSubmissionDynamic(
         totalCriteria: rows.length,
         overallScore: comprehensiveAnalysis.overallScore,
         compliancePercentage: comprehensiveAnalysis.compliancePercentage,
+        impactFactorsUsed: impactFactorsUsed ? {
+          numberOfStudents: impactFactorsUsed.numberOfStudents,
+          numberOfStaff: impactFactorsUsed.numberOfStaff,
+          cost: impactFactorsUsed.cost,
+          isPublicUse: impactFactorsUsed.isPublicUse,
+          documentDate: impactFactorsUsed.documentDate,
+          vpatVersion: impactFactorsUsed.vpatVersion || extractedData.metadata.vpatVersion
+        } : undefined,
         levelACompliance: comprehensiveAnalysis.levelACompliance,
         levelAACompliance: comprehensiveAnalysis.levelAACompliance,
         levelAAACompliance: comprehensiveAnalysis.levelAAACompliance,

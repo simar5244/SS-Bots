@@ -166,11 +166,7 @@ export default function CreateVPATBot() {
 
 
 
-              <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4">
-                <p className="text-sm font-medium text-yellow-900">
-                  ⚠️ <strong>Legal Compliance Notice:</strong> This bot uses AI for VPAT evaluation. All submissions should be reviewed by qualified accessibility professionals before making legal decisions.
-                </p>
-              </div>
+
 
             <div className="flex gap-4">
               <button 

@@ -85,3 +85,7 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "wscript.exe"; Parameters: """{app
 [Run]
 Filename: "wscript.exe"; Parameters: """{app}\START_APP_HIDDEN.vbs"" ""{app}\START_APP.bat"""; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent
 
+[UninstallDelete]
+Type: filesandordirs; Name: "{userappdata}\\{#MyAppName}"
+Type: filesandordirs; Name: "{localappdata}\\{#MyAppName}"
+
