@@ -8,8 +8,12 @@ interface MultiVPATRequest {
     fileName: string
     fileType: string
     impactFactors?: {
-      peopleImpacted?: number
+      numberOfStudents?: number
+      numberOfStaff?: number
       cost?: number
+      isPublicUse?: boolean
+      documentDate?: string
+      vpatVersion?: string
     }
   }>
 }

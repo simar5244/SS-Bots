@@ -27,53 +27,53 @@ export class VPATPlatformParser {
     
     console.log('🔍 [PLATFORM PARSER] Starting platform variation detection...')
     
-    const detectionPrompt = `Analyze this VPAT document to determine if it contains platform-specific variations for accessibility criteria.
-
-Look for patterns like:
-- "Web: Supports, Desktop: Partially Supports, Mobile: Does Not Support"
-- Separate columns or sections for different platforms (Web, Desktop, Mobile, iOS, Android, etc.)
-- Criteria where conformance varies by platform/environment
-- Platform-specific remarks or notes (e.g., "Portrait mode only on desktop", "Landscape not available on mobile")
-
-Document excerpt (first 25000 characters):
-${documentText.substring(0, 25000)}
-
-Return JSON:
-{
-  "hasPlatformVariations": boolean,
-  "detectedPlatforms": ["Web", "Desktop", "Mobile", "iOS", "Android"] (list all detected platforms),
-  "variationPattern": "Description of how platforms are distinguished in the document",
-  "exampleCriteria": [
-    {
-      "criterionId": "1.3.4",
-      "platforms": {
-        "Web": "Supports",
-        "Desktop": "Partially Supports"
+    // Extract platform names from the FULL document using regex
+    const platformPattern = /(?:Web|Electronic Docs?|Software|Authoring Tool|Support Docs?|Product Docs?|Mobile|iOS|Android|Desktop|Closed Functionality|Open Functionality|Non-web document)(?:\s*:)/gi
+    const matches = documentText.match(platformPattern)
+    
+    if (!matches || matches.length === 0) {
+      console.log('⚠️ [PLATFORM PARSER] No platform patterns found in document')
+      return {
+        hasPlatformVariations: false,
+        detectedPlatforms: [],
+        criteriaWithVariations: [],
+        criteriaWithoutVariations: extractedCriteria
       }
     }
-  ]
-}`
-
+    
+    // Extract unique platform names
+    const platformSet = new Set<string>()
+    matches.forEach(match => {
+      const platformName = match.replace(':', '').trim()
+      platformSet.add(platformName)
+    })
+    
+    const detectedPlatforms = Array.from(platformSet)
+    
+    console.log('📊 [PLATFORM PARSER] Detected platforms from document:', detectedPlatforms)
+    
+    if (detectedPlatforms.length === 0) {
+      return {
+        hasPlatformVariations: false,
+        detectedPlatforms: [],
+        criteriaWithVariations: [],
+        criteriaWithoutVariations: extractedCriteria
+      }
+    }
+    
+    const detection = {
+      hasPlatformVariations: detectedPlatforms.length > 1,
+      detectedPlatforms: detectedPlatforms,
+      variationPattern: `Found ${detectedPlatforms.length} platforms in document`
+    }
+    
+    console.log('📊 [PLATFORM PARSER] Detection result:', {
+      hasPlatformVariations: detection.hasPlatformVariations,
+      platforms: detection.detectedPlatforms,
+      pattern: detection.variationPattern
+    })
+    
     try {
-      const detectionResponse = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-          { 
-            role: 'system', 
-            content: 'You are an expert at analyzing VPAT documents and identifying platform-specific accessibility variations. Return only valid JSON.' 
-          },
-          { role: 'user', content: detectionPrompt }
-        ],
-        temperature: 0.1,
-        response_format: { type: 'json_object' }
-      })
-
-      const detection = JSON.parse(detectionResponse.choices[0].message.content || '{}')
-      console.log('📊 [PLATFORM PARSER] Detection result:', {
-        hasPlatformVariations: detection.hasPlatformVariations,
-        platforms: detection.detectedPlatforms,
-        pattern: detection.variationPattern
-      })
 
       if (!detection.hasPlatformVariations || !detection.detectedPlatforms || detection.detectedPlatforms.length === 0) {
         return {

@@ -241,11 +241,10 @@ export class VPATDocumentParser {
 ${documentText}
 
 CRITICAL INSTRUCTIONS:
-1. This VPAT document contains information for MULTIPLE platforms (Web, Desktop, Mobile, Electronic Docs, Software, Authoring Tool, etc.)
-2. You MUST extract conformance levels ONLY for the "${platformName}" platform
-3. IGNORE all other platforms - if a criterion shows "Web: Supports, Desktop: Does Not Support", and you're extracting for Desktop, return ONLY "Does Not Support"
-4. Look for platform-specific sections, tables, or remarks that distinguish between platforms
-5. Extract ALL ${scorecardCriteria.length} criteria listed below
+1. Extract conformance levels ONLY for the "${platformName}" platform
+2. IGNORE all other platforms - if a criterion shows "Web: Supports, Desktop: Does Not Support", and you're extracting for Desktop, return ONLY "Does Not Support"
+3. Look for platform-specific sections, tables, or remarks that distinguish between platforms
+4. Extract ALL ${scorecardCriteria.length} criteria listed below
 
 WCAG CRITERIA TO ANALYZE (${scorecardCriteria.length} total):
 ${scorecardCriteria.map(id => `${id}: Extract conformance for ${platformName} ONLY`).join('\n')}

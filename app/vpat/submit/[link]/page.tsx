@@ -16,6 +16,7 @@ export default function VPATSubmitPage() {
     numberOfStudents?: number
     numberOfStaff?: number
     cost?: number
+    isPublicUse?: boolean
     documentDate?: string
     vpatVersion?: string
   }}>({})
@@ -49,23 +50,43 @@ export default function VPATSubmitPage() {
       const selectedFiles = Array.from(e.target.files)
       setFiles(selectedFiles)
       
-      const initialImpactData: {[key: string]: {peopleImpacted?: number, cost?: number}} = {}
+      const initialImpactData: {[key: string]: {
+        numberOfStudents?: number
+        numberOfStaff?: number
+        cost?: number
+        isPublicUse?: boolean
+        documentDate?: string
+        vpatVersion?: string
+      }} = {}
       selectedFiles.forEach(file => {
-        initialImpactData[file.name] = {}
+        initialImpactData[file.name] = {
+          numberOfStudents: 0,
+          numberOfStaff: 0,
+          cost: 0,
+          isPublicUse: false,
+          documentDate: undefined,
+          vpatVersion: undefined
+        }
       })
       setFileImpactData(initialImpactData)
       setError('')
     }
   }
 
-  const updateImpactData = (fileName: string, field: 'numberOfStudents' | 'numberOfStaff' | 'cost' | 'documentDate' | 'vpatVersion', value: string) => {
+  const updateImpactData = (
+    fileName: string,
+    field: 'numberOfStudents' | 'numberOfStaff' | 'cost' | 'isPublicUse' | 'documentDate' | 'vpatVersion',
+    value: string
+  ) => {
     setFileImpactData(prev => ({
       ...prev,
       [fileName]: {
         ...prev[fileName],
-        [field]: field === 'documentDate' || field === 'vpatVersion' 
+        [field]: field === 'documentDate' || field === 'vpatVersion'
           ? (value === '' ? undefined : value)
-          : (value === '' ? undefined : parseFloat(value))
+          : field === 'isPublicUse'
+            ? value === 'Yes'
+            : (value === '' ? undefined : parseFloat(value))
       }
     }))
   }
@@ -79,6 +100,22 @@ export default function VPATSubmitPage() {
     if (files.length > 10) {
       setError('Maximum 10 files allowed per batch')
       return
+    }
+
+    for (const file of files) {
+      const impact = fileImpactData[file.name]
+      if (
+        !impact ||
+        impact.cost === undefined ||
+        impact.numberOfStudents === undefined ||
+        impact.numberOfStaff === undefined ||
+        impact.isPublicUse === undefined ||
+        !impact.documentDate ||
+        !impact.vpatVersion
+      ) {
+        setError(`Please complete required pre-upload inputs for ${file.name}: annual cost, public use, student users, staff users, document date, and VPAT version.`)
+        return
+      }
     }
 
     setSubmitting(true)
@@ -320,9 +357,9 @@ export default function VPATSubmitPage() {
 
           {files.length > 0 && (
             <div className="bg-white border-2 border-black/10 rounded-lg p-6">
-              <h3 className="text-lg font-bold mb-4">Impact Factors (Optional)</h3>
-              <p className="text-sm text-black/60 mb-4">
-                Provide impact information for each document to generate weighted scores based on usage and cost.
+              <h3 className="text-lg font-bold mb-4">Resource Information (Required Before Upload)</h3>
+              <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
+                <span className="font-semibold">Required before upload:</span> collect and enter real usage/cost values before VPAT upload and grading. If values are still 0, they are placeholders and will skew grading decisions.
               </p>
               <div className="space-y-4">
                 {files.map((file, index) => (
@@ -336,67 +373,95 @@ export default function VPATSubmitPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-medium text-black/70 mb-1">
-                          # of Students Impacted
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          placeholder="e.g., 40000"
-                          value={fileImpactData[file.name]?.numberOfStudents || ''}
-                          onChange={(e) => updateImpactData(file.name, 'numberOfStudents', e.target.value)}
-                          className="w-full px-3 py-2 text-sm border border-black/20 rounded-lg focus:outline-none focus:border-black transition-colors"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-black/70 mb-1">
-                          # of Staff Impacted
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          placeholder="e.g., 150"
-                          value={fileImpactData[file.name]?.numberOfStaff || ''}
-                          onChange={(e) => updateImpactData(file.name, 'numberOfStaff', e.target.value)}
-                          className="w-full px-3 py-2 text-sm border border-black/20 rounded-lg focus:outline-none focus:border-black transition-colors"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-black/70 mb-1">
-                          Cost ($)
+                          Annual Cost ($) <span className="text-red-600">*</span>
                         </label>
                         <input
                           type="number"
                           min="0"
                           step="0.01"
                           placeholder="e.g., 50000"
-                          value={fileImpactData[file.name]?.cost || ''}
+                          value={fileImpactData[file.name]?.cost ?? ''}
                           onChange={(e) => updateImpactData(file.name, 'cost', e.target.value)}
                           className="w-full px-3 py-2 text-sm border border-black/20 rounded-lg focus:outline-none focus:border-black transition-colors"
                         />
+                        <p className="text-xs text-black/50 mt-1">Required pre-upload input. 0 means placeholder only.</p>
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-black/70 mb-1">
-                          Document Date
+                          Public Use? <span className="text-red-600">*</span>
+                        </label>
+                        <select
+                          value={fileImpactData[file.name]?.isPublicUse ? 'Yes' : 'No'}
+                          onChange={(e) => updateImpactData(file.name, 'isPublicUse', e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-black/20 rounded-lg focus:outline-none focus:border-black transition-colors"
+                        >
+                          <option value="No">No</option>
+                          <option value="Yes">Yes</option>
+                        </select>
+                        <p className="text-xs text-black/50 mt-1">Required pre-upload input. Select actual production exposure.</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-black/70 mb-1">
+                          Student Users (Annual) <span className="text-red-600">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="e.g., 40000"
+                          value={fileImpactData[file.name]?.numberOfStudents ?? ''}
+                          onChange={(e) => updateImpactData(file.name, 'numberOfStudents', e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-black/20 rounded-lg focus:outline-none focus:border-black transition-colors"
+                        />
+                        <p className="text-xs text-black/50 mt-1">Required pre-upload input. 0 means placeholder only.</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-black/70 mb-1">
+                          Staff Users (Annual) <span className="text-red-600">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="e.g., 150"
+                          value={fileImpactData[file.name]?.numberOfStaff ?? ''}
+                          onChange={(e) => updateImpactData(file.name, 'numberOfStaff', e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-black/20 rounded-lg focus:outline-none focus:border-black transition-colors"
+                        />
+                        <p className="text-xs text-black/50 mt-1">Required pre-upload input. 0 means placeholder only.</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-black/70 mb-1">
+                          Document Date <span className="text-red-600">*</span>
                         </label>
                         <input
                           type="date"
-                          value={fileImpactData[file.name]?.documentDate || ''}
+                          value={fileImpactData[file.name]?.documentDate ?? ''}
                           onChange={(e) => updateImpactData(file.name, 'documentDate', e.target.value)}
                           className="w-full px-3 py-2 text-sm border border-black/20 rounded-lg focus:outline-none focus:border-black transition-colors"
                         />
                       </div>
                       <div className="col-span-2">
                         <label className="block text-xs font-medium text-black/70 mb-1">
-                          VPAT Version (for reference only)
+                          VPAT Version <span className="text-red-600">*</span>
                         </label>
                         <input
                           type="text"
                           placeholder="e.g., 2.5"
-                          value={fileImpactData[file.name]?.vpatVersion || ''}
+                          value={fileImpactData[file.name]?.vpatVersion ?? ''}
                           onChange={(e) => updateImpactData(file.name, 'vpatVersion', e.target.value)}
                           className="w-full px-3 py-2 text-sm border border-black/20 rounded-lg focus:outline-none focus:border-black transition-colors"
                         />
                       </div>
+                    </div>
+                    <div className="mt-3 rounded-md bg-blue-50 p-3 text-xs text-blue-900">
+                      <p className="font-medium">Note: These values affect your final grade. Grade B requires 0 students and no public use. Grade C requires ≤50 students, ≤50 staff, no public use, and &lt;$25k cost.</p>
+                      <p className="mt-2 text-blue-950">
+                        Current Values: {fileImpactData[file.name]?.numberOfStudents ?? 0} students, {fileImpactData[file.name]?.numberOfStaff ?? 0} staff, {fileImpactData[file.name]?.isPublicUse ? 'public use' : 'no public use'}, ${fileImpactData[file.name]?.cost ?? 0} annual cost
+                      </p>
+                      {(fileImpactData[file.name]?.numberOfStudents ?? 0) === 0 ||
+                       (fileImpactData[file.name]?.numberOfStaff ?? 0) === 0 ||
+                       (fileImpactData[file.name]?.cost ?? 0) === 0 ? (
+                        <p className="mt-1 text-amber-700">One or more fields are still 0. Confirm these are intentional and not placeholder defaults.</p>
+                      ) : null}
                     </div>
                   </div>
                 ))}

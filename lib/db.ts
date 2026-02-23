@@ -98,6 +98,7 @@ interface VPATSubmission {
     numberOfStudents?: number
     numberOfStaff?: number
     cost?: number
+    isPublicUse?: boolean
     documentDate?: string
     vpatVersion?: string
   }
@@ -200,6 +201,7 @@ interface VPATSubmission {
         numberOfStudents?: number
         numberOfStaff?: number
         cost?: number
+        isPublicUse?: boolean
         documentDate?: string
         vpatVersion?: string
       }
