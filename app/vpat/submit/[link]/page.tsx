@@ -1,15 +1,24 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
+import { ArrowLeft } from 'lucide-react'
 
 export default function VPATSubmitPage() {
   const params = useParams()
+  const router = useRouter()
   const link = params.link as string
   
   const [botInfo, setBotInfo] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [files, setFiles] = useState<File[]>([])
+  const [fileImpactData, setFileImpactData] = useState<{[key: string]: {
+    numberOfStudents?: number
+    numberOfStaff?: number
+    cost?: number
+    documentDate?: string
+    vpatVersion?: string
+  }}>({})
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [submissionId, setSubmissionId] = useState('')
@@ -39,8 +48,26 @@ export default function VPATSubmitPage() {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files)
       setFiles(selectedFiles)
+      
+      const initialImpactData: {[key: string]: {peopleImpacted?: number, cost?: number}} = {}
+      selectedFiles.forEach(file => {
+        initialImpactData[file.name] = {}
+      })
+      setFileImpactData(initialImpactData)
       setError('')
     }
+  }
+
+  const updateImpactData = (fileName: string, field: 'numberOfStudents' | 'numberOfStaff' | 'cost' | 'documentDate' | 'vpatVersion', value: string) => {
+    setFileImpactData(prev => ({
+      ...prev,
+      [fileName]: {
+        ...prev[fileName],
+        [field]: field === 'documentDate' || field === 'vpatVersion' 
+          ? (value === '' ? undefined : value)
+          : (value === '' ? undefined : parseFloat(value))
+      }
+    }))
   }
 
   const handleSubmit = async () => {
@@ -63,9 +90,11 @@ export default function VPATSubmitPage() {
       if (files.length === 1) {
         // Single file submission
         formData.append('document', files[0])
+        formData.append('impactData', JSON.stringify(fileImpactData[files[0].name] || {}))
       } else {
         // Multiple file submission
         files.forEach(file => formData.append('documents', file))
+        formData.append('impactDataMap', JSON.stringify(fileImpactData))
       }
 
       const res = await fetch(`/api/vpat/submit/${link}`, {
@@ -123,7 +152,15 @@ export default function VPATSubmitPage() {
       <div className="min-h-screen bg-white">
         <header className="border-b border-black/10">
           <div className="max-w-4xl mx-auto px-6 py-6">
-            <h1 className="text-2xl font-bold">{botInfo?.name}</h1>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => router.back()}
+                className="p-2 hover:bg-black/5 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <h1 className="text-2xl font-bold">{botInfo?.name}</h1>
+            </div>
           </div>
         </header>
 
@@ -224,8 +261,18 @@ export default function VPATSubmitPage() {
     <div className="min-h-screen bg-white">
       <header className="border-b border-black/10">
         <div className="max-w-4xl mx-auto px-6 py-6">
-          <h1 className="text-2xl font-bold">{botInfo?.name}</h1>
-          <p className="text-black/60 mt-1">VPAT Document Evaluation</p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.back()}
+              className="p-2 hover:bg-black/5 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold">{botInfo?.name}</h1>
+              <p className="text-black/60 mt-1">VPAT Document Evaluation</p>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -240,7 +287,7 @@ export default function VPATSubmitPage() {
 
 
 
-          <div className="border-2 border-dashed border-black/20 rounded-lg p-12 text-center hover:border-black/40 transition-colors">
+          <div className="border-2 border-dashed border-black/20 rounded-lg p-8 text-center hover:border-black/40 transition-colors">
             <input
               type="file"
               onChange={handleFileChange}
@@ -250,46 +297,112 @@ export default function VPATSubmitPage() {
               id="vpat-upload"
             />
             <label htmlFor="vpat-upload" className="cursor-pointer">
-              {files.length > 0 ? (
+              {files.length === 0 ? (
                 <div>
-                  <div className="text-6xl mb-4">📄</div>
-                  <p className="text-xl font-bold mb-2">
-                    {files.length === 1 ? files[0].name : `${files.length} files selected`}
-                  </p>
-                  <p className="text-black/60">
-                    {files.length === 1 
-                      ? `${(files[0].size / 1024 / 1024).toFixed(2)} MB`
-                      : `${files.reduce((total, f) => total + f.size, 0) / 1024 / 1024} MB total`
-                    }
-                  </p>
-                  <p className="text-sm text-black/40 mt-4">
-                    {files.length === 1 ? 'Click to change file' : 'Click to change files'}
-                  </p>
-                  {files.length > 1 && (
-                    <div className="mt-4 text-sm text-black/60">
-                      <p>Files:</p>
-                      <ul className="mt-2 space-y-1">
-                        {files.map((f, i) => (
-                          <li key={i} className="text-xs">• {f.name}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div>
-                  <div className="text-6xl mb-4">📤</div>
+                  <div className="text-6xl mb-4">�</div>
                   <p className="text-xl font-bold mb-2">Click to upload VPAT document(s)</p>
-                  <p className="text-black/60">
-                    or drag and drop
-                  </p>
+                  <p className="text-black/60">or drag and drop</p>
                   <p className="text-sm text-black/40 mt-4">
                     Any format accepted • Up to 10 files • No size limit
                   </p>
                 </div>
+              ) : (
+                <div>
+                  <div className="text-4xl mb-2">📄</div>
+                  <p className="text-lg font-bold mb-1">
+                    {files.length === 1 ? '1 file selected' : `${files.length} files selected`}
+                  </p>
+                  <p className="text-sm text-black/40">Click to change files</p>
+                </div>
               )}
             </label>
           </div>
+
+          {files.length > 0 && (
+            <div className="bg-white border-2 border-black/10 rounded-lg p-6">
+              <h3 className="text-lg font-bold mb-4">Impact Factors (Optional)</h3>
+              <p className="text-sm text-black/60 mb-4">
+                Provide impact information for each document to generate weighted scores based on usage and cost.
+              </p>
+              <div className="space-y-4">
+                {files.map((file, index) => (
+                  <div key={index} className="border border-black/10 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex-1">
+                        <p className="font-medium text-sm truncate">{file.name}</p>
+                        <p className="text-xs text-black/60">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-black/70 mb-1">
+                          # of Students Impacted
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="e.g., 40000"
+                          value={fileImpactData[file.name]?.numberOfStudents || ''}
+                          onChange={(e) => updateImpactData(file.name, 'numberOfStudents', e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-black/20 rounded-lg focus:outline-none focus:border-black transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-black/70 mb-1">
+                          # of Staff Impacted
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="e.g., 150"
+                          value={fileImpactData[file.name]?.numberOfStaff || ''}
+                          onChange={(e) => updateImpactData(file.name, 'numberOfStaff', e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-black/20 rounded-lg focus:outline-none focus:border-black transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-black/70 mb-1">
+                          Cost ($)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="e.g., 50000"
+                          value={fileImpactData[file.name]?.cost || ''}
+                          onChange={(e) => updateImpactData(file.name, 'cost', e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-black/20 rounded-lg focus:outline-none focus:border-black transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-black/70 mb-1">
+                          Document Date
+                        </label>
+                        <input
+                          type="date"
+                          value={fileImpactData[file.name]?.documentDate || ''}
+                          onChange={(e) => updateImpactData(file.name, 'documentDate', e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-black/20 rounded-lg focus:outline-none focus:border-black transition-colors"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-xs font-medium text-black/70 mb-1">
+                          VPAT Version (for reference only)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g., 2.5"
+                          value={fileImpactData[file.name]?.vpatVersion || ''}
+                          onChange={(e) => updateImpactData(file.name, 'vpatVersion', e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-black/20 rounded-lg focus:outline-none focus:border-black transition-colors"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 text-red-900">

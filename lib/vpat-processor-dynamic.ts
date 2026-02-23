@@ -1,6 +1,27 @@
-import { dbService, VPATBot } from './db'
+import { 
+  dbService, 
+  VPATSubmission, 
+  VPATBot
+} from './db'
+
+interface PlatformReport {
+  platform: string
+  extractedData: any
+  validationResult: any
+  aiAnalysis: any
+  missingCriteriaResult: any
+  rows: any[]
+  analysis: any
+  excelBuffer: Buffer<ArrayBufferLike>
+  fileName: string
+  criteria?: any[]
+}
+
 import { VPATDocumentParser } from './vpat-parser'
 import { ScorecardGenerator } from './scorecard-generator'
+import { vpatNegligiblePostProcessor } from './vpat-negligible-post-processor'
+import { vpatPlatformParser } from './vpat-platform-parser'
+import { vpatMultiProductParser } from './vpat-multi-product-parser'
 import OpenAI from 'openai'
 import * as XLSX from 'xlsx'
 import { writeFile } from 'fs/promises'
@@ -131,8 +152,12 @@ export async function processVPATSubmissionDynamic(
     
     await dbService.addProcessingLog(submissionId, 'step1_completed', 'success', `Document parsed: ${documentText.length} characters`)
 
-    // STEP 2: Extract metadata and criteria using Method 2 (highest precision)
-    console.log('🔍 [STEP 2] Extracting VPAT data using Method 2...')
+    // STEP 2: Extract metadata and criteria using dynamic processing
+    console.log('🔍 [STEP 2] Extracting VPAT data using dynamic processing...')
+    
+    let quickScorecardAnalysis: ScorecardAnalysis
+    let quickCriteriaIds: string[]
+    
     // Read the scorecard file first to know what criteria to look for
     const { readFile } = await import('fs/promises')
     const { readdir } = await import('fs/promises')
@@ -158,129 +183,303 @@ export async function processVPATSubmissionDynamic(
     console.log('📊 Scorecard file read:', scorecardBuffer.length, 'bytes')
     
     // Quick analysis to get criteria list
-    const quickScorecardAnalysis = await analyzeScorecardTemplate(scorecardBuffer)
-    const quickCriteriaIds = quickScorecardAnalysis.criteriaList.map(c => c.id)
+    quickScorecardAnalysis = await analyzeScorecardTemplate(scorecardBuffer)
+    quickCriteriaIds = quickScorecardAnalysis.criteriaList.map(c => c.id)
     console.log('📋 Quick scorecard analysis found:', quickCriteriaIds.length, 'criteria')
     
-    const vpatData = await vpatParser.extractVPATData(documentText, 'method2', quickCriteriaIds)
-    console.log('📊 Metadata extracted:', JSON.stringify(vpatData.metadata, null, 2))
-    console.log('📋 Criteria extracted:', vpatData.criteria.length, 'items')
+    // STEP 2.5: DETECT PLATFORMS FIRST (before extraction)
+    console.log('🔍 [STEP 2.5] Detecting platforms in VPAT...')
+    const platformDetectionResult = await vpatPlatformParser.detectPlatformVariations(documentText, [])
     
-    if (vpatData.criteria.length > 0) {
-      console.log('📄 First 3 criteria:')
-      vpatData.criteria.slice(0, 3).forEach((c: any, i: number) => {
-        console.log(`  ${i + 1}. ${c.criterionId}: ${c.conformanceLevel} - ${c.criterionName}`)
-      })
-      
-      console.log('📋 All VPAT criteria IDs:')
-      vpatData.criteria.forEach((c: any, i: number) => {
-        console.log(`  ${i + 1}. ${c.criterionId} (${c.conformanceLevel})`)
-      })
+    let platformsToProcess: string[] = []
+    if (platformDetectionResult.hasPlatformVariations && platformDetectionResult.detectedPlatforms.length > 0) {
+      platformsToProcess = platformDetectionResult.detectedPlatforms
+      console.log(`✅ [PLATFORM DETECTION] Found ${platformsToProcess.length} platforms:`, platformsToProcess)
+      await dbService.addProcessingLog(
+        submissionId,
+        'step2_5_platform_detection',
+        'success',
+        `Detected ${platformsToProcess.length} platforms: ${platformsToProcess.join(', ')}`
+      )
+    } else {
+      platformsToProcess = ['Default']
+      console.log('ℹ️ [PLATFORM DETECTION] No platform variations detected, using default processing')
     }
     
-    await dbService.addProcessingLog(submissionId, 'step2_completed', 'success', `VPAT data extracted: ${vpatData.criteria.length} criteria`)
-
-    // STEP 3: Analyze scorecard template to understand evaluation methodology
+    // STEP 3: Analyze scorecard template
     console.log('📊 [STEP 3] Analyzing scorecard template...')
-    console.log('🔍 Scorecard reference:', vpatBot.referenceScorecard)
-    
-    // Use the already analyzed scorecard from step 2
     const scorecardAnalysis = quickScorecardAnalysis
     console.log('📋 Scorecard analysis result:', {
       criteriaFound: scorecardAnalysis.criteriaList.length,
       methodology: scorecardAnalysis.evaluationMethodology ? 'Found' : 'Missing',
       scoringSystem: scorecardAnalysis.scoringSystem ? 'Found' : 'Missing'
     })
-    
     await dbService.addProcessingLog(submissionId, 'step3_completed', 'success', `Scorecard analyzed: ${scorecardAnalysis.criteriaList.length} criteria found`)
 
-    // STEP 4: Skip AI methodology generation (optimization)
-    console.log('⚡ [STEP 4] Skipping AI methodology generation for speed...')
-    const scoringMethodology = 'Standard WCAG VPAT evaluation methodology'
-    await dbService.addProcessingLog(submissionId, 'step4_completed', 'success', 'Scoring methodology created (optimized)')
-
-    // STEP 5: Skip AI methodology validation (optimization)
-    console.log('⚡ [STEP 5] Skipping AI methodology validation for speed...')
-    const methodologyValidation = { isValid: true, feedback: 'Validation skipped for performance' }
-    await dbService.addProcessingLog(submissionId, 'step5_completed', 'success', 'Methodology validation skipped (optimized)')
-
-    // STEP 6: Extract metadata and criteria from PDF document
-    const processingMethod = vpatBot.config.processingMethod || 'method2'
-    console.log('🔍 [STEP 6] Re-extracting VPAT data for validation...')
-    // Extract criteria from scorecard analysis to pass to parser
+    // STEP 4: NOW PROCESS EACH PLATFORM SEPARATELY
+    console.log(`🔄 [STEP 4] Processing ${platformsToProcess.length} platform(s) separately...`)
+    
+    let platformReports: Array<{
+      platform: string
+      extractedData: any
+      validationResult: any
+      aiAnalysis: any
+      missingCriteriaResult: any
+      rows: any[]
+      analysis: any
+      excelBuffer: Buffer
+      fileName: string
+    }> = []
+    
     const scorecardCriteriaIds = scorecardAnalysis.criteriaList.map(c => c.id)
-    console.log('📋 Using scorecard criteria for extraction:', scorecardCriteriaIds.length, 'criteria')
-    const extractedData = await vpatParser.extractVPATData(documentText, processingMethod, scorecardCriteriaIds)
-    console.log('📊 Final extraction:', {
-      metadata: extractedData.metadata,
-      criteriaCount: extractedData.criteria.length
-    })
-    await dbService.addProcessingLog(submissionId, 'step6_completed', 'success', `Extracted ${extractedData.criteria.length} criteria from VPAT`)
-
-    // STEP 7: Validate against dynamic scorecard requirements
-    console.log('✅ [STEP 7] Validating against scorecard...')
-    const validationResult = await validateAgainstScorecard(extractedData.metadata, extractedData.criteria, scorecardAnalysis)
-    console.log('🔍 Validation result:', {
-      isValid: validationResult.isValid,
-      errors: validationResult.errors.length,
-      warnings: validationResult.warnings.length
-    })
-    await dbService.addProcessingLog(submissionId, 'step7_completed', validationResult.isValid ? 'success' : 'warning',
-      `Scorecard validation: ${validationResult.isValid ? 'PASSED' : 'NEEDS_REVIEW'} - ${validationResult.errors.length} errors`)
-
-    // STEP 8: Generate optimized AI analysis
-    console.log('🤖 [STEP 8] Generating optimized AI analysis...')
-    const nonSupporting = extractedData.criteria.filter((c: any) => c.scorecardEquivalent !== 'Supports' && c.scorecardEquivalent !== 'Not Applicable')
-    const aiAnalysis = {
-      summary: `Found ${extractedData.criteria.length} criteria with ${nonSupporting.length} issues requiring attention.`,
-      confidence: 85,
-      flaggedIssues: nonSupporting.slice(0, 5).map((c: any) => `${c.criterionId}: ${c.conformanceLevel}`),
-      recommendations: ['Review non-compliant criteria', 'Address partial support issues']
+    
+    for (const platform of platformsToProcess) {
+      console.log(`\n${'='.repeat(80)}`)
+      console.log(`🎯 [PLATFORM: ${platform}] Starting independent processing pipeline`)
+      console.log(`${'='.repeat(80)}\n`)
+      
+      // STEP 4.1: Extract data FOR THIS PLATFORM ONLY
+      console.log(`📊 [${platform}] STEP 1: Extracting VPAT data for ${platform} platform...`)
+      const extractedData = await vpatParser.extractVPATData(
+        documentText, 
+        'dynamic', 
+        scorecardCriteriaIds,
+        platform !== 'Default' ? platform : undefined
+      )
+      console.log(`📊 [${platform}] Extracted ${extractedData.criteria.length} criteria`)
+      
+      // STEP 4.2: Validate FOR THIS PLATFORM
+      console.log(`✅ [${platform}] STEP 2: Validating against scorecard...`)
+      const validationResult = await validateAgainstScorecard(
+        extractedData.metadata, 
+        extractedData.criteria, 
+        scorecardAnalysis
+      )
+      console.log(`🔍 [${platform}] Validation: ${validationResult.isValid ? 'PASSED' : 'NEEDS_REVIEW'}`)
+      
+      // STEP 4.3: Generate AI analysis FOR THIS PLATFORM
+      console.log(`🤖 [${platform}] STEP 3: Generating AI analysis...`)
+      const nonSupporting = extractedData.criteria.filter((c: any) => 
+        c.scorecardEquivalent !== 'Supports' && c.scorecardEquivalent !== 'Not Applicable'
+      )
+      const aiAnalysis = {
+        summary: `[${platform}] Found ${extractedData.criteria.length} criteria with ${nonSupporting.length} issues requiring attention.`,
+        confidence: 85,
+        flaggedIssues: nonSupporting.slice(0, 5).map((c: any) => `${c.criterionId}: ${c.conformanceLevel}`),
+        recommendations: [`Review ${platform} non-compliant criteria`, `Address ${platform} partial support issues`]
+      }
+      console.log(`📋 [${platform}] AI analysis: ${aiAnalysis.summary}`)
+      
+      // STEP 4.4: Add missing criteria FOR THIS PLATFORM
+      console.log(`🔍 [${platform}] STEP 4: Checking for missing criteria...`)
+      const missingCriteriaResult = await addMissingCriteria(
+        extractedData.criteria, 
+        scorecardAnalysis, 
+        documentText
+      )
+      console.log(`📋 [${platform}] Final criteria count: ${missingCriteriaResult.finalCriteria.length}`)
+      
+      // STEP 4.5: Generate scorecard FOR THIS PLATFORM
+      console.log(`📊 [${platform}] STEP 5: Generating scorecard...`)
+      const scorecardGenerator = new ScorecardGenerator()
+      const { rows, analysis, excelBuffer } = await scorecardGenerator.generateDetailedScorecard(
+        extractedData.metadata,
+        missingCriteriaResult.finalCriteria,
+        vpatBot.referenceScorecard,
+        submissionId
+      )
+      
+      const fileName = `scorecard_${platform.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.xlsx`
+      
+      platformReports.push({
+        platform,
+        extractedData,
+        validationResult,
+        aiAnalysis,
+        missingCriteriaResult,
+        rows,
+        analysis,
+        excelBuffer,
+        fileName,
+        criteria: missingCriteriaResult.finalCriteria
+      })
+      
+      console.log(`✅ [${platform}] Report generated: ${rows.length} criteria, ${analysis.compliancePercentage}% compliance\n`)
     }
-    console.log('📋 AI analysis completed (optimized):', { summary: aiAnalysis.summary })
-    await dbService.addProcessingLog(submissionId, 'step8_completed', 'success', 'AI analysis completed (optimized)')
-
-    // STEP 9: Add missing criteria (if any) - NEW FEATURE
-    console.log('� [STEP 9] Checking for missing criteria...')
-    const missingCriteriaResult = await addMissingCriteria(extractedData.criteria, scorecardAnalysis, documentText)
-    console.log('📋 Missing criteria result:', {
-      originalCount: extractedData.criteria.length,
-      addedCount: missingCriteriaResult.addedCriteria.length,
-      finalCount: missingCriteriaResult.finalCriteria.length
-    })
-    await dbService.addProcessingLog(submissionId, 'step9_completed', 'success', `Missing criteria added: ${missingCriteriaResult.addedCriteria.length}`)
-
-    // STEP 10: Fill up the scorecard and Excel using the same data as UI
-    console.log('� [STEP 10] Generating detailed scorecard from UI data...')
-    const scorecardGenerator = new ScorecardGenerator()
-    const { rows, analysis, excelBuffer } = await scorecardGenerator.generateDetailedScorecard(
-      extractedData.metadata,
-      missingCriteriaResult.finalCriteria, // Use same final criteria that UI will display
-      vpatBot.referenceScorecard,
-      submissionId
+    
+    await dbService.addProcessingLog(
+      submissionId, 
+      'step4_platform_processing', 
+      'success', 
+      `Processed ${platformReports.length} platform(s): ${platformsToProcess.join(', ')}`
     )
-    console.log('✅ Scorecard generated from UI data:', { rows: rows.length, analysis: !!analysis })
-    await dbService.addProcessingLog(submissionId, 'step10_completed', 'success', `Scorecard populated: ${rows.length} criteria`)
+    
+    // Use first platform report for backward compatibility with existing code
+    const primaryReport = platformReports[0]
+    const extractedData = primaryReport.extractedData
+    const validationResult = primaryReport.validationResult
+    const aiAnalysis = primaryReport.aiAnalysis
+    const missingCriteriaResult = primaryReport.missingCriteriaResult
+    const rows = primaryReport.rows
+    const analysis = primaryReport.analysis
+    
+    // STEP 5: Save all platform reports
+    console.log('📊 [STEP 5] Saving platform reports...')
+    const savedReports = []
+    
+    for (const report of platformReports) {
+      const filePath = join(SCORECARD_DIR, report.fileName)
+      await writeFile(filePath, report.excelBuffer)
+      
+      savedReports.push({
+        platform: report.platform,
+        fileName: report.fileName,
+        filePath,
+        analysis: report.analysis,
+        criteriaCount: report.rows.length,
+        criteria: ((report as any).criteria || []).map((c: any) => ({
+          criterionId: c.criterionId,
+          criterionName: c.criterionName,
+          level: c.level,
+          conformanceLevel: c.conformanceLevel,
+          scorecardEquivalent: c.scorecardEquivalent,
+          remarks: c.remarks,
+          pageNumber: c.pageNumber,
+          excerpt: c.excerpt,
+          confidence: c.confidence
+        }))
+      })
+      
+      console.log(`✅ Saved ${report.platform} report: ${report.fileName}`)
+    }
+    
+    await dbService.addProcessingLog(
+      submissionId, 
+      'step5_completed', 
+      'success', 
+      `Saved ${savedReports.length} platform report(s): ${savedReports.map(r => `${r.platform} (${r.criteriaCount} criteria)`).join(', ')}`
+    )
+
+    // STEP 6: Post-process ALL platform scorecards for negligible impact (SEPARATE SERVICE)
+    console.log('🔍 [STEP 10.5] Running negligible impact post-processor on all platform reports...')
+    let negligibleProcessingLogs: string[] = []
+    
+    for (let i = 0; i < platformReports.length; i++) {
+      const report = platformReports[i]
+      console.log(`🔍 [NEGLIGIBLE IMPACT] Processing ${report.platform} report...`)
+      
+      try {
+        const hasImpact = await vpatNegligiblePostProcessor.hasImpactColumn(report.excelBuffer)
+        
+        if (hasImpact) {
+          const { modifiedBuffer, result } = await vpatNegligiblePostProcessor.processScorecard(report.excelBuffer)
+          
+          // Update the report's buffer with the modified version
+          platformReports[i].excelBuffer = modifiedBuffer
+          
+          // Re-save the updated file
+          const filePath = join(SCORECARD_DIR, report.fileName)
+          await writeFile(filePath, modifiedBuffer)
+          
+          if (result.processedCount > 0) {
+            const logMessage = `[${report.platform}] Auto-marked ${result.processedCount} criteria as Supports due to negligible impact`
+            negligibleProcessingLogs.push(logMessage)
+            console.log(`✅ [NEGLIGIBLE IMPACT] ${logMessage}`)
+            
+            result.overriddenCriteria.forEach(c => {
+              console.log(`  - Row ${c.rowNumber}: ${c.criterionId} (${c.criterionName})`)
+              console.log(`    Original: ${c.originalConformance} → New: Supports`)
+              console.log(`    Impact: ${c.impactValue}`)
+            })
+          } else {
+            negligibleProcessingLogs.push(`[${report.platform}] Impact column found but no negligible criteria detected`)
+            console.log(`ℹ️ [NEGLIGIBLE IMPACT] No negligible criteria in ${report.platform}`)
+          }
+        } else {
+          console.log(`ℹ️ [NEGLIGIBLE IMPACT] No Impact column found in ${report.platform} scorecard`)
+          negligibleProcessingLogs.push(`[${report.platform}] No Impact column found`)
+        }
+      } catch (postProcessError) {
+        console.error(`⚠️ [NEGLIGIBLE IMPACT] Post-processing failed for ${report.platform}:`, postProcessError)
+        negligibleProcessingLogs.push(`[${report.platform}] Post-processing failed: ${postProcessError}`)
+      }
+    }
+    
+    const combinedNegligibleLog = negligibleProcessingLogs.length > 0 
+      ? negligibleProcessingLogs.join('; ') 
+      : 'No negligible impact processing needed'
+    
+    await dbService.addProcessingLog(
+      submissionId, 
+      'step10_5_negligible_impact', 
+      'success', 
+      combinedNegligibleLog
+    )
 
     // STEP 11: Generate optimized comprehensive analysis
     console.log('⚡ [STEP 11] Generating optimized comprehensive analysis...')
     
-    // Fast O(n) analysis instead of O(n²)
-    const supports = missingCriteriaResult.finalCriteria.filter((c: any) => 
-      c.scorecardEquivalent === 'Supports' || c.conformanceLevel === 'Supports'
-    ).length
-    const partiallySupports = missingCriteriaResult.finalCriteria.filter((c: any) => 
-      c.scorecardEquivalent === 'Partially Supports' || c.conformanceLevel === 'Partially Supports'
-    ).length
-    const doesNotSupport = missingCriteriaResult.finalCriteria.filter((c: any) => 
-      c.scorecardEquivalent === 'Does Not Support' || c.conformanceLevel === 'Does Not Support'
-    ).length
-    const notApplicable = missingCriteriaResult.finalCriteria.filter((c: any) => 
-      c.scorecardEquivalent === 'Not Applicable' || c.conformanceLevel === 'Not Applicable'
-    ).length
+    // Fast O(n) analysis with proper conformance normalization
+    let supports = 0, partiallySupports = 0, doesNotSupport = 0, notApplicable = 0
+    
+    console.log('🔍 [DEBUG] Starting conformance analysis with', missingCriteriaResult.finalCriteria.length, 'criteria')
+    
+    // Log the first few criteria to understand the data structure
+    if (missingCriteriaResult.finalCriteria.length > 0) {
+      console.log('🔍 [DEBUG] Sample criteria data:', {
+        firstCriterion: missingCriteriaResult.finalCriteria[0],
+        secondCriterion: missingCriteriaResult.finalCriteria[1] || 'N/A',
+        keys: Object.keys(missingCriteriaResult.finalCriteria[0] || {})
+      })
+    }
+    
+    missingCriteriaResult.finalCriteria.forEach((c: any, index: number) => {
+      // Use the same normalization logic as the comprehensive analysis
+      const conformance = c.scorecardEquivalent || c.conformanceLevel || 'Does Not Support'
+      
+      console.log(`🔍 [DEBUG] Criterion ${index}:`, {
+        id: c.id,
+        conformanceLevel: c.conformanceLevel,
+        scorecardEquivalent: c.scorecardEquivalent,
+        rawConformance: conformance,
+        allKeys: Object.keys(c)
+      })
+      
+      let normalizedConformance = 'doesNotSupport'
+      if (conformance === 'Supports' || conformance === 'supports') {
+        normalizedConformance = 'supports'
+      } else if (conformance === 'Partially Supports' || conformance === 'PartiallySupports' || conformance === 'Partial') {
+        normalizedConformance = 'partiallySupports'
+      } else if (conformance === 'Does Not Support' || conformance === 'DoesNotSupport' || conformance === 'Not Supported') {
+        normalizedConformance = 'doesNotSupport'
+      } else if (conformance === 'Not Applicable' || conformance === 'NotApplicable' || conformance === 'N/A') {
+        normalizedConformance = 'notApplicable'
+      } else {
+        // Log any unexpected conformance values
+        console.log(`🔍 [DEBUG] Unexpected conformance value: "${conformance}"`)
+      }
+      
+      console.log(`🔍 [DEBUG] Normalized to: ${normalizedConformance}`)
+      
+      // Count the normalized conformance
+      if (normalizedConformance === 'supports') supports++
+      else if (normalizedConformance === 'partiallySupports') partiallySupports++
+      else if (normalizedConformance === 'doesNotSupport') doesNotSupport++
+      else if (normalizedConformance === 'notApplicable') notApplicable++
+    })
     
     const totalApplicable = missingCriteriaResult.finalCriteria.length - notApplicable
     const overallScore = totalApplicable > 0 ? Math.round((supports / totalApplicable) * 100) : 100
+    
+    console.log('📊 [SCORE CALCULATION] Conformance counts:', {
+      supports,
+      partiallySupports,
+      doesNotSupport,
+      notApplicable,
+      totalCriteria: missingCriteriaResult.finalCriteria.length,
+      totalApplicable,
+      calculatedScore: overallScore
+    })
     
     const comprehensiveAnalysis = {
       overallScore,
@@ -337,9 +536,13 @@ export async function processVPATSubmissionDynamic(
     
     console.log('✅ Comprehensive analysis completed (optimized):', {
       overallScore: comprehensiveAnalysis.overallScore,
-      compliancePercentage: comprehensiveAnalysis.compliancePercentage
+      compliancePercentage: comprehensiveAnalysis.compliancePercentage,
+      supports: comprehensiveAnalysis.supports,
+      partiallySupports: comprehensiveAnalysis.partiallySupports,
+      doesNotSupport: comprehensiveAnalysis.doesNotSupport,
+      totalCriteria: missingCriteriaResult.finalCriteria.length
     })
-    await dbService.addProcessingLog(submissionId, 'step11_comprehensive_analysis', 'success', 'Comprehensive analysis generated (optimized)')
+    await dbService.addProcessingLog(submissionId, 'step11_comprehensive_analysis', 'success', `Comprehensive analysis generated: ${comprehensiveAnalysis.overallScore}% overall score`)
 
     // Save files and update database
     console.log('💾 [STEP 13] Starting file and database save...')
@@ -378,9 +581,16 @@ export async function processVPATSubmissionDynamic(
     }
 
     console.log('🔄 [STEP 13] Starting Promise.all operations...')
+    
+    // Determine final status
+    const finalStatus = (validationResult?.isValid && vpatBot.config.autoApprove) ? 'completed' : 'needs_review'
+    console.log(`📊 [STEP 13] Setting submission status to: ${finalStatus}`)
+    
     try {
+      // Save primary report for backward compatibility
+      await writeFile(scorecardPath, primaryReport.excelBuffer)
+      
       await Promise.all([
-        writeFile(scorecardPath, excelBuffer),
         dbService.updateVPATSubmission(submissionId, {
           extractedData: {
             vpatVersion: extractedData.metadata.vpatVersion,
@@ -389,26 +599,43 @@ export async function processVPATSubmissionDynamic(
             reportDate: extractedData.metadata.reportDate,
             wcagVersion: extractedData.metadata.wcagVersion,
             wcagLevel: extractedData.metadata.wcagLevel,
-            criteria: missingCriteriaResult.finalCriteria, // Use final criteria including added ones
+            criteria: missingCriteriaResult.finalCriteria,
           },
           validationResults: validationResult,
-        aiAnalysis,
-        generatedScorecard,
-        detailedScorecard: {
-          rows,
-          analysis,
-          scorecardAnalysis
-        },
-        status: validationResult.isValid && vpatBot.config.autoApprove ? 'completed' : 'needs_review',
-        completedAt: Date.now()
-      }),
-      dbService.updateVPATBot(vpatBot.id, {
-        processedCount: vpatBot.processedCount + 1
-      })
+          aiAnalysis,
+          generatedScorecard,
+          platformReports: savedReports.map(r => ({
+            platform: r.platform,
+            fileName: r.fileName,
+            analysis: r.analysis,
+            criteriaCount: r.criteriaCount,
+            criteria: r.criteria
+          })),
+          status: finalStatus,
+          completedAt: Date.now()
+        }),
+        dbService.updateVPATBot(vpatBot.id, {
+          processedCount: vpatBot.processedCount + 1
+        })
       ])
       
       console.log('✅ [STEP 13] Promise.all completed successfully')
-      await dbService.addProcessingLog(submissionId, 'step13_files_saved', 'success', 'Files and database updated')
+      console.log(`✅ [STEP 13] Submission ${submissionId} status updated to: ${finalStatus}`)
+      console.log(`✅ [STEP 13] Platform reports saved: ${savedReports.map(r => r.platform).join(', ')}`)
+      console.log(`✅ [STEP 13] Score saved to database: ${comprehensiveAnalysis.overallScore}% (supports: ${comprehensiveAnalysis.supports}, doesNotSupport: ${comprehensiveAnalysis.doesNotSupport})`)
+      
+      // Verify the status was actually persisted
+      const verifySubmission = await dbService.findVPATSubmissionById(submissionId)
+      console.log(`🔍 [STEP 13] Verification - Current status in DB: ${verifySubmission?.status}`)
+      console.log(`🔍 [STEP 13] Verification - Score in DB: ${verifySubmission?.generatedScorecard?.analysis?.overallScore}%`)
+      if (verifySubmission?.status !== finalStatus) {
+        console.error(`❌ [STEP 13] Status mismatch! Expected: ${finalStatus}, Got: ${verifySubmission?.status}`)
+      }
+      if (!verifySubmission?.generatedScorecard?.analysis?.overallScore) {
+        console.error(`❌ [STEP 13] Score not found in database!`)
+      }
+      
+      await dbService.addProcessingLog(submissionId, 'step13_files_saved', 'success', `Files and database updated - Status: ${finalStatus}`)
     } catch (saveError) {
       console.error('❌ [STEP 13] Error saving files/database:', saveError)
       await dbService.addProcessingLog(submissionId, 'step13_files_saved', 'error', `Save error: ${saveError}`)
@@ -541,7 +768,7 @@ async function analyzeScorecardTemplate(scorecardBuffer: Buffer): Promise<Scorec
 }
 
 
-async function validateAgainstScorecard(
+export async function validateAgainstScorecard(
   metadata: any, 
   criteria: any[], 
   scorecardAnalysis: ScorecardAnalysis
@@ -588,7 +815,7 @@ async function validateAgainstScorecard(
 }
 
 
-async function addMissingCriteria(
+export async function addMissingCriteria(
   extractedCriteria: any[], 
   scorecardAnalysis: ScorecardAnalysis, 
   documentText: string

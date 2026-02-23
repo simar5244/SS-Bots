@@ -2,10 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 
 interface VPATBotConfig {
-  processingMethod: 'method1' | 'method2' | 'dynamic';
+  processingMethod: 'method1';
   requireWCAGLevel: string;
   strictMode: boolean;
   requireVPATVersion: string;
@@ -21,7 +20,7 @@ export default function CreateVPATBot() {
   const [name, setName] = useState('')
   const [scorecardFile, setScorecardFile] = useState<File | null>(null)
   const [config, setConfig] = useState<VPATBotConfig>({
-    processingMethod: 'dynamic',
+    processingMethod: 'method1',
     requireWCAGLevel: 'AA',
     strictMode: true,
     requireVPATVersion: '2.4',
@@ -50,7 +49,9 @@ export default function CreateVPATBot() {
       // Create FormData for file upload
       const formData = new FormData()
       formData.append('name', name)
-      formData.append('scorecard', scorecardFile)
+      if (scorecardFile) {
+        formData.append('scorecard', scorecardFile)
+      }
       formData.append('config', JSON.stringify(config))
 
       const response = await fetch('/api/vpat-bots', {
@@ -80,11 +81,12 @@ export default function CreateVPATBot() {
     <div className="min-h-screen bg-white text-black">
       <header className="border-b border-black/10">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-4">
-          <Link href="/dashboard">
-            <button className="px-4 py-2 hover:bg-black/5 rounded-lg transition-colors">
-              Back
-            </button>
-          </Link>
+          <button 
+            onClick={() => router.push('/dashboard')}
+            className="px-4 py-2 hover:bg-black/5 rounded-lg transition-colors"
+          >
+            Back
+          </button>
           <span className="text-2xl font-bold">Create VPAT Bot</span>
         </div>
       </header>
@@ -94,7 +96,7 @@ export default function CreateVPATBot() {
           <div className="space-y-8">
             <div>
               <h2 className="text-3xl font-bold mb-2">Bot Details</h2>
-              <p className="text-black/60">Name your VPAT evaluation bot and upload reference scorecard</p>
+              <p className="text-black/60">Choose processing method and configure your VPAT evaluation bot</p>
             </div>
 
             <div>
@@ -103,7 +105,7 @@ export default function CreateVPATBot() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="UTA VPAT Evaluator"
+                placeholder="TTU VPAT Evaluator"
                 className="w-full px-4 py-3 bg-white border-2 border-black/10 rounded-lg focus:outline-none focus:border-black transition-colors"
               />
             </div>
@@ -148,7 +150,7 @@ export default function CreateVPATBot() {
               disabled={!name || !scorecardFile || loading}
               className="w-full py-3 bg-black text-white rounded-lg font-medium hover:bg-black/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Creating Bot...' : 'Continue'}
+              {loading ? 'Creating Bot...' : 'Create VPAT Bot'}
             </button>
           </div>
         )}
@@ -171,16 +173,18 @@ export default function CreateVPATBot() {
               </div>
 
             <div className="flex gap-4">
-              <Link href={`/vpat/submit/${shareableLink}`} className="flex-1">
-                <button className="w-full py-3 bg-black text-white rounded-lg font-medium hover:bg-black/80 transition-colors">
-                  Use Bot
-                </button>
-              </Link>
-              <Link href="/dashboard" className="flex-1">
-                <button className="w-full py-3 bg-white border-2 border-black text-black rounded-lg font-medium hover:bg-black hover:text-white transition-colors">
-                  Back to Dashboard
-                </button>
-              </Link>
+              <button 
+                onClick={() => router.push(`/vpat/submit/${shareableLink}`)}
+                className="flex-1 py-3 bg-black text-white rounded-lg font-medium hover:bg-black/80 transition-colors"
+              >
+                Use Bot
+              </button>
+              <button 
+                onClick={() => router.push('/dashboard')}
+                className="flex-1 py-3 bg-white border-2 border-black text-black rounded-lg font-medium hover:bg-black hover:text-white transition-colors"
+              >
+                Back to Dashboard
+              </button>
             </div>
           </div>
         )}

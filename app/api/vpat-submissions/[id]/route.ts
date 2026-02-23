@@ -15,7 +15,23 @@ export async function GET(
     }
 
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string }
-    const submission = await dbService.findVPATSubmissionById(params.id)
+    
+    // Check if this is a platform-specific ID (format: submissionId_platformName)
+    let actualId = params.id
+    let platformName: string | null = null
+    
+    if (params.id.includes('_')) {
+      const parts = params.id.split('_')
+      // Check if the last part is a platform name (not a UUID part)
+      const lastPart = parts[parts.length - 1]
+      // Platform names won't be hex strings, UUIDs will be
+      if (!/^[0-9a-f]+$/i.test(lastPart)) {
+        platformName = lastPart
+        actualId = parts.slice(0, -1).join('_')
+      }
+    }
+    
+    const submission = await dbService.findVPATSubmissionById(actualId)
 
     if (!submission) {
       return NextResponse.json({ error: 'Submission not found' }, { status: 404 })
@@ -27,7 +43,46 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
-    return NextResponse.json(submission)
+    // If platform-specific, customize the response
+    let responseData: any = { ...submission }
+    
+    if (platformName && (submission as any).platformReports) {
+      const platformReport = (submission as any).platformReports.find(
+        (r: any) => r.platform === platformName
+      )
+      
+      if (platformReport) {
+        responseData = {
+          ...submission,
+          id: params.id,
+          originalId: actualId,
+          platform: platformName,
+          platformSpecific: true,
+          extractedData: {
+            ...submission.extractedData,
+            productName: `${submission.extractedData?.productName || 'Product'} (${platformName})`,
+            criteria: platformReport.criteria || submission.extractedData?.criteria
+          },
+          generatedScorecard: {
+            ...submission.generatedScorecard,
+            fileName: platformReport.fileName,
+            analysis: platformReport.analysis
+          }
+        }
+      }
+    }
+
+    return NextResponse.json({
+      ...responseData,
+      _timestamp: Date.now() // Add timestamp for cache busting
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store'
+      }
+    })
   } catch (error) {
     console.error('Get submission error:', error)
     return NextResponse.json(

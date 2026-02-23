@@ -7,6 +7,10 @@ interface MultiVPATRequest {
     buffer: Buffer
     fileName: string
     fileType: string
+    impactFactors?: {
+      peopleImpacted?: number
+      cost?: number
+    }
   }>
 }
 
@@ -71,9 +75,12 @@ export async function processMultipleVPATs(request: MultiVPATRequest): Promise<M
     uploadedAt: Date.now()
   }))
   
+  const impactFactorsArray = documentsToProcess.map(doc => doc.impactFactors)
+  
   const { batchId, submissions } = await dbService.createVPATBatch(
     request.vpatBot.id,
-    submittedDocuments
+    submittedDocuments,
+    impactFactorsArray
   )
   
   console.log('📋 [MULTI VPAT] Created batch:', batchId, 'with', submissions.length, 'submissions')
@@ -94,6 +101,8 @@ export async function processMultipleVPATs(request: MultiVPATRequest): Promise<M
     await dbService.updateVPATSubmission(submission.id, { status: 'processing' })
     
     try {
+      // Use dynamic processor for all submissions
+      console.log(`🎯 [MULTI VPAT] Using Dynamic Method for ${doc.fileName}`)
       await processVPATSubmissionDynamic(
         submission.id,
         request.vpatBot,

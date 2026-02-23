@@ -73,7 +73,7 @@ interface VPATBot {
     requireWCAGLevel?: string
     autoApprove?: boolean
     strictMode: boolean
-    processingMethod: 'method1' | 'method2' | 'dynamic'
+    processingMethod: 'method1' | 'dynamic'
   }
   shareableLink: string
   isActive: boolean
@@ -94,6 +94,41 @@ interface VPATSubmission {
     uploadedAt: number
     rawText?: string
   }
+  impactFactors?: {
+    numberOfStudents?: number
+    numberOfStaff?: number
+    cost?: number
+    documentDate?: string
+    vpatVersion?: string
+  }
+  multiProduct?: {
+    hasMultipleProducts: boolean
+    products?: Array<{
+      productName: string
+      productType: string
+      criteria: Array<{
+        criterionId: string
+        criterionName: string
+        level: string
+        conformanceLevel: string
+        scorecardEquivalent: string
+        remarks?: string
+        pageNumber?: number
+        excerpt?: string
+        confidence?: number
+        platformVersions?: Array<{
+          platform: string
+          conformanceLevel: string
+          scorecardEquivalent: string
+          remarks?: string
+          pageNumber?: number
+          excerpt?: string
+          confidence?: number
+        }>
+        hasPlatformVariations?: boolean
+      }>
+    }>
+  }
   status: 'pending' | 'processing' | 'completed' | 'failed' | 'needs_review'
   extractedData?: {
     vpatVersion?: string
@@ -112,6 +147,16 @@ interface VPATSubmission {
       pageNumber?: number
       excerpt?: string
       confidence?: number
+      platformVersions?: Array<{
+        platform: string
+        conformanceLevel: string
+        scorecardEquivalent: string
+        remarks?: string
+        pageNumber?: number
+        excerpt?: string
+        confidence?: number
+      }>
+      hasPlatformVariations?: boolean
     }>
   }
   validationResults?: {
@@ -125,6 +170,23 @@ interface VPATSubmission {
       matchingCriteria: number
     }
   }
+  platformReports?: Array<{
+    platform: string
+    fileName: string
+    analysis: any
+    criteriaCount: number
+    criteria?: Array<{
+      criterionId: string
+      criterionName: string
+      level: string
+      conformanceLevel: string
+      scorecardEquivalent: string
+      remarks?: string
+      pageNumber?: number
+      excerpt?: string
+      confidence?: number
+    }>
+  }>
   generatedScorecard?: {
     fileName: string
     generatedAt: number
@@ -133,6 +195,14 @@ interface VPATSubmission {
       totalCriteria: number
       overallScore: number
       compliancePercentage: number
+      weightedImpactScore?: number
+      impactFactorsUsed?: {
+        numberOfStudents?: number
+        numberOfStaff?: number
+        cost?: number
+        documentDate?: string
+        vpatVersion?: string
+      }
       levelACompliance?: number
       levelAACompliance?: number
       levelAAACompliance?: number
@@ -602,7 +672,13 @@ class DatabaseService {
   }
 
   // VPAT Submission methods
-  async createVPATSubmission(vpatBotId: string, submittedDocument: VPATSubmission['submittedDocument'], batchId?: string, batchIndex?: number): Promise<VPATSubmission> {
+  async createVPATSubmission(
+    vpatBotId: string, 
+    submittedDocument: VPATSubmission['submittedDocument'], 
+    impactFactors?: VPATSubmission['impactFactors'],
+    batchId?: string, 
+    batchIndex?: number
+  ): Promise<VPATSubmission> {
     const db = await this.getDb()
     const submission: VPATSubmission = {
       id: uuidv4(),
@@ -610,6 +686,7 @@ class DatabaseService {
       batchId,
       batchIndex,
       submittedDocument,
+      impactFactors,
       status: 'pending',
       processingLog: [{
         timestamp: Date.now(),
@@ -624,12 +701,17 @@ class DatabaseService {
     return submission
   }
 
-  async createVPATBatch(vpatBotId: string, submittedDocuments: VPATSubmission['submittedDocument'][]): Promise<{batchId: string, submissions: VPATSubmission[]}> {
+  async createVPATBatch(
+    vpatBotId: string, 
+    submittedDocuments: VPATSubmission['submittedDocument'][],
+    impactFactorsArray?: (VPATSubmission['impactFactors'] | undefined)[]
+  ): Promise<{batchId: string, submissions: VPATSubmission[]}> {
     const batchId = uuidv4()
     const submissions: VPATSubmission[] = []
     
     for (let i = 0; i < submittedDocuments.length; i++) {
-      const submission = await this.createVPATSubmission(vpatBotId, submittedDocuments[i], batchId, i)
+      const impactFactors = impactFactorsArray?.[i]
+      const submission = await this.createVPATSubmission(vpatBotId, submittedDocuments[i], impactFactors, batchId, i)
       submissions.push(submission)
     }
     

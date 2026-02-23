@@ -27,7 +27,37 @@ export async function GET(
 
     const submissions = await dbService.findVPATSubmissionsByBotId(params.id)
 
-    return NextResponse.json(submissions)
+    // Expand submissions with multiple platforms into separate entries
+    const expandedSubmissions: any[] = []
+    
+    for (const submission of submissions) {
+      if ((submission as any).platformReports && (submission as any).platformReports.length > 1) {
+        // Create separate submission entry for each platform
+        for (const platformReport of (submission as any).platformReports) {
+          expandedSubmissions.push({
+            ...submission,
+            id: `${submission.id}_${platformReport.platform}`,
+            originalId: submission.id,
+            platform: platformReport.platform,
+            platformSpecific: true,
+            extractedData: {
+              ...submission.extractedData,
+              productName: `${submission.extractedData?.productName || 'Product'} (${platformReport.platform})`
+            },
+            generatedScorecard: {
+              ...submission.generatedScorecard,
+              fileName: platformReport.fileName,
+              analysis: platformReport.analysis
+            }
+          })
+        }
+      } else {
+        // Single platform or no platform reports - keep as is
+        expandedSubmissions.push(submission)
+      }
+    }
+
+    return NextResponse.json(expandedSubmissions)
   } catch (error) {
     console.error('Get submissions error:', error)
     return NextResponse.json(

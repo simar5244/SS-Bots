@@ -2,6 +2,8 @@ import { dbService, VPATBot } from './db'
 import { vpatParser } from './vpat-parser'
 import { EmailService } from './email-service'
 import { scorecardGenerator } from './scorecard-generator'
+import { vpatImpactScorer } from './vpat-impact-scorer'
+import { vpatMultiProductParser } from './vpat-multi-product-parser'
 import { writeFile } from 'fs/promises'
 import { join } from 'path'
 
@@ -24,7 +26,7 @@ export async function processVPATSubmission(
 
     await dbService.addProcessingLog(submissionId, 'parsing_completed', 'success', `Extracted ${documentText.length} characters`)
 
-    const processingMethod = vpatBot.config.processingMethod || 'method1'
+    const processingMethod = (vpatBot.config.processingMethod || 'method1') as 'method1' | 'dynamic'
     
     if (processingMethod === 'dynamic') {
       // Use the new dynamic processor
@@ -32,14 +34,67 @@ export async function processVPATSubmission(
       return processVPATSubmissionDynamic(submissionId, vpatBot, documentBuffer, fileType)
     }
     
-    const { metadata, criteria } = await vpatParser.extractVPATData(documentText, processingMethod)
+    // Method 1: Read scorecard to get criteria list
+    const { readFile, readdir } = await import('fs/promises')
+    const uploadsDir = join(process.env.HOME || '', 'Desktop', 'db', 'vpat-uploads')
+    const files = await readdir(uploadsDir)
+    const scorecardFile = files.find(file => file.includes(vpatBot.referenceScorecard.fileName))
+    
+    if (!scorecardFile) {
+      throw new Error(`Scorecard file not found: ${vpatBot.referenceScorecard.fileName}`)
+    }
+    
+    const scorecardFilePath = join(uploadsDir, scorecardFile)
+    const scorecardBuffer = await readFile(scorecardFilePath)
+    
+    // Analyze scorecard to get criteria list
+    const ExcelJS = (await import('exceljs')).default
+    const workbook = new ExcelJS.Workbook()
+    await workbook.xlsx.load(scorecardBuffer as any)
+    
+    const criteriaIds: string[] = []
+    workbook.eachSheet((worksheet) => {
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) { // Skip header
+          const cellValue = row.getCell(1).value
+          if (cellValue && typeof cellValue === 'string') {
+            const match = cellValue.match(/^\d+\.\d+\.\d+/)
+            if (match) {
+              criteriaIds.push(match[0])
+            }
+          }
+        }
+      })
+    })
+    
+    console.log(`📋 [METHOD 1] Found ${criteriaIds.length} criteria in scorecard`)
+    
+    const { metadata, criteria } = await vpatParser.extractVPATData(documentText, 'method1', criteriaIds)
 
     await dbService.addProcessingLog(
       submissionId, 
       'extraction_method', 
       'success', 
-      `Using ${processingMethod === 'method2' ? 'Method 2 (Direct PDF to LLM)' : 'Method 1 (Chunking)'}`
+      'Using Method 1 (Chunking)'
     )
+
+    const submission = await dbService.findVPATSubmissionById(submissionId)
+    const multiProductAnalysis = await vpatMultiProductParser.detectAndSeparateProducts(documentText, criteria)
+    
+    if (multiProductAnalysis.hasMultipleProducts) {
+      await dbService.updateVPATSubmission(submissionId, {
+        multiProduct: {
+          hasMultipleProducts: true,
+          products: multiProductAnalysis.products
+        }
+      })
+      await dbService.addProcessingLog(
+        submissionId,
+        'multi_product_detected',
+        'success',
+        `Detected ${multiProductAnalysis.products.length} product variants: ${multiProductAnalysis.products.map(p => p.productType).join(', ')}`
+      )
+    }
 
     const validationResult = vpatParser.validateVPAT(
       metadata,
@@ -102,6 +157,24 @@ export async function processVPATSubmission(
     const scorecardFileName = `Scorecard_${metadata.productName?.replace(/[^a-zA-Z0-9]/g, '_') || 'Unknown'}_${Date.now()}.xlsx`
     const scorecardPath = join(SCORECARD_DIR, scorecardFileName)
 
+    const impactScore = submission?.impactFactors 
+      ? vpatImpactScorer.calculateWeightedImpactScore(
+          analysis.overallScore,
+          criteria.length,
+          submission.impactFactors,
+          metadata
+        )
+      : null
+
+    if (impactScore) {
+      await dbService.addProcessingLog(
+        submissionId,
+        'impact_scoring_completed',
+        'success',
+        `Weighted impact score: ${impactScore.weightedScore} (${impactScore.priorityLevel} priority)`
+      )
+    }
+
     const generatedScorecard = {
       fileName: scorecardFileName,
       generatedAt: Date.now(),
@@ -110,6 +183,14 @@ export async function processVPATSubmission(
         totalCriteria: rows.length,
         overallScore: analysis.overallScore,
         compliancePercentage: analysis.compliancePercentage,
+        weightedImpactScore: impactScore?.weightedScore,
+        impactFactorsUsed: impactScore ? {
+          numberOfStudents: submission?.impactFactors?.numberOfStudents,
+          numberOfStaff: submission?.impactFactors?.numberOfStaff,
+          cost: submission?.impactFactors?.cost,
+          documentDate: submission?.impactFactors?.documentDate,
+          vpatVersion: submission?.impactFactors?.vpatVersion || metadata.vpatVersion
+        } : undefined,
         levelACompliance: analysis.levelACompliance,
         levelAACompliance: analysis.levelAACompliance,
         levelAAACompliance: analysis.levelAAACompliance,

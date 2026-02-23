@@ -24,7 +24,7 @@ interface VPATCriteriaViewerProps {
 type SortField = 'criterionId' | 'level' | 'conformanceLevel' | 'pageNumber' | 'confidence'
 type SortDirection = 'asc' | 'desc'
 type FilterLevel = 'all' | 'A' | 'AA' | 'AAA'
-type FilterStatus = 'all' | 'Supports' | 'Partially Supports' | 'Does Not Support'
+type FilterStatus = 'all' | 'Supports' | 'Partially Supports' | 'Does Not Support' | 'Not Applicable'
 
 export default function VPATCriteriaViewer({ criteria, productName, submissionId }: VPATCriteriaViewerProps) {
   const [searchQuery, setSearchQuery] = useState('')
@@ -108,12 +108,13 @@ export default function VPATCriteriaViewer({ criteria, productName, submissionId
     const supports = criteria.filter(c => c.scorecardEquivalent === 'Supports').length
     const partial = criteria.filter(c => c.scorecardEquivalent === 'Partially Supports').length
     const doesNotSupport = criteria.filter(c => c.scorecardEquivalent === 'Does Not Support').length
+    const notApplicable = criteria.filter(c => c.scorecardEquivalent === 'Not Applicable').length
     const withPageNumbers = criteria.filter(c => c.pageNumber).length
     const avgConfidence = criteria.filter(c => c.confidence).length > 0
       ? Math.round(criteria.filter(c => c.confidence).reduce((sum, c) => sum + (c.confidence || 0), 0) / criteria.filter(c => c.confidence).length)
       : 0
 
-    return { total, supports, partial, doesNotSupport, withPageNumbers, avgConfidence }
+    return { total, supports, partial, doesNotSupport, notApplicable, withPageNumbers, avgConfidence }
   }, [criteria])
 
   const getStatusIcon = (status: string) => {
@@ -124,6 +125,8 @@ export default function VPATCriteriaViewer({ criteria, productName, submissionId
         return <AlertCircle className="w-5 h-5 text-yellow-600" />
       case 'Does Not Support':
         return <XCircle className="w-5 h-5 text-red-600" />
+      case 'Not Applicable':
+        return <FileText className="w-5 h-5 text-gray-600" />
       default:
         return null
     }
@@ -137,6 +140,8 @@ export default function VPATCriteriaViewer({ criteria, productName, submissionId
         return 'bg-yellow-100 text-yellow-800 border-yellow-300'
       case 'Does Not Support':
         return 'bg-red-100 text-red-800 border-red-300'
+      case 'Not Applicable':
+        return 'bg-gray-100 text-gray-800 border-gray-300'
       default:
         return 'bg-gray-100 text-gray-800 border-gray-300'
     }
@@ -169,13 +174,13 @@ export default function VPATCriteriaViewer({ criteria, productName, submissionId
             <div className="text-2xl font-bold text-red-900">{stats.doesNotSupport}</div>
             <div className="text-xs text-red-700">Not Supported</div>
           </div>
+          <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+            <div className="text-2xl font-bold text-gray-900">{stats.notApplicable}</div>
+            <div className="text-xs text-gray-700">Not Applicable</div>
+          </div>
           <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
             <div className="text-2xl font-bold text-purple-900">{stats.withPageNumbers}</div>
             <div className="text-xs text-purple-700">With Page #</div>
-          </div>
-          <div className="bg-indigo-50 rounded-lg p-3 border border-indigo-200">
-            <div className="text-2xl font-bold text-indigo-900">{stats.avgConfidence}%</div>
-            <div className="text-xs text-indigo-700">Avg Confidence</div>
           </div>
         </div>
       </div>
@@ -222,6 +227,7 @@ export default function VPATCriteriaViewer({ criteria, productName, submissionId
               <option value="Supports">Supports</option>
               <option value="Partially Supports">Partially Supports</option>
               <option value="Does Not Support">Does Not Support</option>
+              <option value="Not Applicable">Not Applicable</option>
             </select>
           </div>
         </div>

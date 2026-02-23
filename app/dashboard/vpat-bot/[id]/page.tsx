@@ -111,6 +111,37 @@ export default function VPATBotDetail() {
     }
   }
 
+  const handleDeleteBot = async () => {
+    if (!confirm('Are you sure you want to delete this bot? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        router.push('/login')
+        return
+      }
+
+      const res = await fetch(`/api/vpat-bots/${params.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (!res.ok) {
+        throw new Error('Failed to delete bot')
+      }
+
+      // Redirect to dashboard after successful deletion
+      router.push('/dashboard')
+    } catch (error) {
+      console.error('Error deleting bot:', error)
+      alert('Failed to delete bot. Please try again.')
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -153,6 +184,12 @@ export default function VPATBotDetail() {
             </div>
           </div>
           <div className="flex gap-3">
+            <button
+              onClick={handleDeleteBot}
+              className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+            >
+              Delete Bot
+            </button>
             <Link href={`/vpat/submit/${bot.shareableLink}`}>
               <button className="px-6 py-3 bg-black text-white rounded-lg hover:bg-black/80 transition-colors font-medium">
                 Use Bot

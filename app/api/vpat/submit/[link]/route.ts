@@ -49,6 +49,10 @@ export async function POST(
     const files = formData.getAll('documents') as File[]
     const singleFile = formData.get('document') as File
     
+    // Extract impact data
+    const impactDataMapStr = formData.get('impactDataMap') as string
+    const impactDataMap = impactDataMapStr ? JSON.parse(impactDataMapStr) : {}
+    
     if (files.length > 1) {
       // Multi-VPAT processing
       if (files.length > 10) {
@@ -69,7 +73,8 @@ export async function POST(
         documents.push({
           buffer,
           fileName: file.name,
-          fileType: file.type
+          fileType: file.type,
+          impactFactors: impactDataMap[file.name] || {}
         })
       }
 
@@ -93,6 +98,9 @@ export async function POST(
       const filePath = join(UPLOAD_DIR, fileName)
       await writeFile(filePath, buffer)
 
+      const impactDataStr = formData.get('impactData') as string
+      const impactFactors = impactDataStr ? JSON.parse(impactDataStr) : {}
+
       const submittedDocument = {
         fileName: singleFile.name,
         fileSize: singleFile.size,
@@ -100,14 +108,18 @@ export async function POST(
         uploadedAt: Date.now(),
       }
 
-      const submission = await dbService.createVPATSubmission(
-        vpatBot.id,
-        submittedDocument
-      )
-
-      processVPATSubmission(submission.id, vpatBot, buffer, singleFile.type).catch((err: Error) => {
-        console.error('Background processing error:', err)
+      // Route through multi-processor
+      const batchResult = await processMultipleVPATs({
+        vpatBot,
+        documents: [{
+          buffer,
+          fileName: singleFile.name,
+          fileType: singleFile.type,
+          impactFactors
+        }]
       })
+      
+      const submission = batchResult.submissions[0]
 
       return NextResponse.json({
         submissionId: submission.id,

@@ -26,11 +26,15 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData()
     
     const name = formData.get('name') as string
-    const file = formData.get('scorecard') as File
+    const file = formData.get('scorecard') as File | null
     const config = JSON.parse(formData.get('config') as string)
 
-    if (!name || !file) {
-      return NextResponse.json({ error: 'Name and scorecard file required' }, { status: 400 })
+    if (!name) {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 })
+    }
+
+    if (!file) {
+      return NextResponse.json({ error: 'Scorecard file is required' }, { status: 400 })
     }
 
     await mkdir(UPLOAD_DIR, { recursive: true })

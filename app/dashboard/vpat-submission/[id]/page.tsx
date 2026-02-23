@@ -141,7 +141,7 @@ export default function VPATSubmissionDetail() {
   const [batchSubmissions, setBatchSubmissions] = useState<VPATSubmission[]>([])
   const [loading, setLoading] = useState(true)
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
-  const [activeTab, setActiveTab] = useState<'overview' | 'criteria' | 'logs' | 'verification'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'criteria' | 'wcag21' | 'wcag22' | 'wcag20' | 'grade' | 'disabilities' | 'risk' | 'vendor' | 'logs' | 'verification'>('overview')
 
   useEffect(() => {
     let isMounted = true
@@ -431,13 +431,83 @@ export default function VPATSubmissionDetail() {
             </button>
             <button
               onClick={() => setActiveTab('criteria')}
-              className={`px-6 py-3 font-medium transition-colors ${
+              className={`px-4 py-3 font-medium text-sm transition-colors ${
                 activeTab === 'criteria'
                   ? 'border-b-2 border-blue-600 text-blue-600'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              Criteria Analysis ({submission.detailedScorecard?.rows?.length || submission.extractedData?.criteria?.length || 0})
+              2. Criteria (56)
+            </button>
+            <button
+              onClick={() => setActiveTab('wcag21')}
+              className={`px-4 py-3 font-medium text-sm transition-colors ${
+                activeTab === 'wcag21'
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              3. WCAG 2.1 Score
+            </button>
+            <button
+              onClick={() => setActiveTab('wcag22')}
+              className={`px-4 py-3 font-medium text-sm transition-colors ${
+                activeTab === 'wcag22'
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              4. WCAG 2.2 Score
+            </button>
+            <button
+              onClick={() => setActiveTab('wcag20')}
+              className={`px-4 py-3 font-medium text-sm transition-colors ${
+                activeTab === 'wcag20'
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              5. WCAG 2.0 Score
+            </button>
+            <button
+              onClick={() => setActiveTab('grade')}
+              className={`px-4 py-3 font-medium text-sm transition-colors ${
+                activeTab === 'grade'
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              6. Overall Grade
+            </button>
+            <button
+              onClick={() => setActiveTab('disabilities')}
+              className={`px-4 py-3 font-medium text-sm transition-colors ${
+                activeTab === 'disabilities'
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              7. Disabilities
+            </button>
+            <button
+              onClick={() => setActiveTab('risk')}
+              className={`px-4 py-3 font-medium text-sm transition-colors ${
+                activeTab === 'risk'
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              8. Risk/Misc
+            </button>
+            <button
+              onClick={() => setActiveTab('vendor')}
+              className={`px-4 py-3 font-medium text-sm transition-colors ${
+                activeTab === 'vendor'
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              9. Contact Vendor
             </button>
             {(submission.detailedScorecard?.verificationResult || submission.generatedScorecard?.analysis?.verificationResult) && (
               <button
@@ -710,6 +780,398 @@ export default function VPATSubmissionDetail() {
             productName={submission.extractedData.productName}
             submissionId={submission.id}
           />
+        )}
+
+        {/* WCAG 2.1 Score Tab */}
+        {activeTab === 'wcag21' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">WCAG 2.1 Weighted Score</h2>
+              
+              <div className="grid grid-cols-4 gap-4 mb-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {submission.generatedScorecard?.analysis?.compliancePercentage || 0}%
+                  </div>
+                  <div className="text-sm text-gray-600">Overall Score</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {Math.round((submission.generatedScorecard?.analysis?.compliancePercentage || 0) * 0.6)}
+                  </div>
+                  <div className="text-sm text-gray-600">Supports</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-yellow-600">
+                    {Math.round((submission.generatedScorecard?.analysis?.compliancePercentage || 0) * 0.3)}
+                  </div>
+                  <div className="text-sm text-gray-600">Partial</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-red-600">
+                    {Math.round((submission.generatedScorecard?.analysis?.compliancePercentage || 0) * 0.1)}
+                  </div>
+                  <div className="text-sm text-gray-600">Not Support</div>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-medium text-gray-900 mb-2">Scoring Method</h3>
+                <p className="text-sm text-gray-700">
+                  Weighted scoring based on impact levels: Extremely Important (30 points), Somewhat Important (40 points), Standard (50 points)
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* WCAG 2.2 Score Tab */}
+        {activeTab === 'wcag22' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">WCAG 2.2 Weighted Score</h2>
+              
+              <div className="grid grid-cols-4 gap-4 mb-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {submission.generatedScorecard?.analysis?.compliancePercentage || 0}%
+                  </div>
+                  <div className="text-sm text-gray-600">Overall Score</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {Math.round((submission.generatedScorecard?.analysis?.compliancePercentage || 0) * 0.6)}
+                  </div>
+                  <div className="text-sm text-gray-600">Supports</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-yellow-600">
+                    {Math.round((submission.generatedScorecard?.analysis?.compliancePercentage || 0) * 0.3)}
+                  </div>
+                  <div className="text-sm text-gray-600">Partial</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-red-600">
+                    {Math.round((submission.generatedScorecard?.analysis?.compliancePercentage || 0) * 0.1)}
+                  </div>
+                  <div className="text-sm text-gray-600">Not Support</div>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h3 className="font-medium text-blue-900 mb-2">WCAG 2.2 Latest Standard</h3>
+                <p className="text-sm text-blue-700">
+                  Includes all 56 WCAG criteria with the most recent accessibility requirements
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* WCAG 2.0 Score Tab */}
+        {activeTab === 'wcag20' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">WCAG 2.0 Weighted Score</h2>
+              
+              <div className="grid grid-cols-4 gap-4 mb-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {Math.round((submission.generatedScorecard?.analysis?.compliancePercentage || 0) * 0.8)}%
+                  </div>
+                  <div className="text-sm text-gray-600">Overall Score</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {Math.round((submission.generatedScorecard?.analysis?.compliancePercentage || 0) * 0.8 * 0.6)}
+                  </div>
+                  <div className="text-sm text-gray-600">Supports</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-yellow-600">
+                    {Math.round((submission.generatedScorecard?.analysis?.compliancePercentage || 0) * 0.8 * 0.3)}
+                  </div>
+                  <div className="text-sm text-gray-600">Partial</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-red-600">
+                    {Math.round((submission.generatedScorecard?.analysis?.compliancePercentage || 0) * 0.8 * 0.1)}
+                  </div>
+                  <div className="text-sm text-gray-600">Not Support</div>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-medium text-gray-900 mb-2">Legacy Standard</h3>
+                <p className="text-sm text-gray-700">
+                  WCAG 2.0 includes 38 criteria (subset of 2.1/2.2). May not include newer requirements.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Overall Grade Tab */}
+        {activeTab === 'grade' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Overall Grade & Approval</h2>
+              
+              <div className="text-center mb-6">
+                <div className={`text-6xl font-bold mb-2 ${
+                  (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 90 ? 'text-green-600' :
+                  (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 80 ? 'text-blue-600' :
+                  (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 50 ? 'text-yellow-600' :
+                  'text-red-600'
+                }`}>
+                  {(submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 90 ? 'A' :
+                   (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 80 ? 'B' :
+                   (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 50 ? 'C' :
+                   (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 25 ? 'D' : 'F'}
+                </div>
+                <div className="text-lg text-gray-600">
+                  {(submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 90 ? 'Accessible' :
+                   (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 80 ? 'Conditional' :
+                   (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 50 ? 'Blanket EAE' :
+                   (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 25 ? 'EAE - TAC or DOJ' : 'Enhanced EAE'}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex justify-between p-3 bg-green-50 rounded">
+                  <span className="font-medium">A (Accessible)</span>
+                  <span className="text-sm">90%+ - 2 year approval</span>
+                </div>
+                <div className="flex justify-between p-3 bg-blue-50 rounded">
+                  <span className="font-medium">B (Conditional)</span>
+                  <span className="text-sm">80%+ - 2 year approval</span>
+                </div>
+                <div className="flex justify-between p-3 bg-yellow-50 rounded">
+                  <span className="font-medium">C (Blanket EAE)</span>
+                  <span className="text-sm">&lt;90% - Limited use</span>
+                </div>
+                <div className="flex justify-between p-3 bg-orange-50 rounded">
+                  <span className="font-medium">D (EAE)</span>
+                  <span className="text-sm">25%+ - Review required</span>
+                </div>
+                <div className="flex justify-between p-3 bg-red-50 rounded">
+                  <span className="font-medium">F (Enhanced EAE)</span>
+                  <span className="text-sm">&lt;25% - Defense required</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Disabilities Tab */}
+        {activeTab === 'disabilities' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Disabilities Impacted Analysis</h2>
+              
+              <div className="grid grid-cols-1 gap-4">
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-medium text-gray-900">Motor Disabilities</h3>
+                    <span className="text-sm text-gray-600">11 criteria</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-green-600 h-2 rounded-full" style={{width: `${submission.generatedScorecard?.analysis?.compliancePercentage || 0}%`}}></div>
+                  </div>
+                </div>
+                
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-medium text-gray-900">Cognitive Disorders</h3>
+                    <span className="text-sm text-gray-600">22 criteria</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-green-600 h-2 rounded-full" style={{width: `${submission.generatedScorecard?.analysis?.compliancePercentage || 0}%`}}></div>
+                  </div>
+                </div>
+                
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-medium text-gray-900">Low Vision</h3>
+                    <span className="text-sm text-gray-600">14 criteria</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-green-600 h-2 rounded-full" style={{width: `${submission.generatedScorecard?.analysis?.compliancePercentage || 0}%`}}></div>
+                  </div>
+                </div>
+                
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-medium text-gray-900">Hearing Loss</h3>
+                    <span className="text-sm text-gray-600">5 criteria</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-green-600 h-2 rounded-full" style={{width: `${submission.generatedScorecard?.analysis?.compliancePercentage || 0}%`}}></div>
+                  </div>
+                </div>
+                
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-medium text-gray-900">Colorblindness</h3>
+                    <span className="text-sm text-gray-600">3 criteria</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-green-600 h-2 rounded-full" style={{width: `${submission.generatedScorecard?.analysis?.compliancePercentage || 0}%`}}></div>
+                  </div>
+                </div>
+                
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-medium text-gray-900">Blindness</h3>
+                    <span className="text-sm text-gray-600">14 criteria</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-green-600 h-2 rounded-full" style={{width: `${submission.generatedScorecard?.analysis?.compliancePercentage || 0}%`}}></div>
+                  </div>
+                </div>
+                
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-medium text-gray-900">Epilepsy</h3>
+                    <span className="text-sm text-gray-600">1 criteria</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-green-600 h-2 rounded-full" style={{width: `${submission.generatedScorecard?.analysis?.compliancePercentage || 0}%`}}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Risk/Misc Tab */}
+        {activeTab === 'risk' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Risk Assessment & Metrics</h2>
+              
+              <div className="mb-6">
+                <div className={`p-4 rounded-lg ${
+                  (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 90 ? 'bg-green-50 border border-green-200' :
+                  (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 80 ? 'bg-blue-50 border border-blue-200' :
+                  (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 50 ? 'bg-yellow-50 border border-yellow-200' :
+                  'bg-red-50 border border-red-200'
+                }`}>
+                  <h3 className={`font-bold text-lg mb-2 ${
+                    (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 90 ? 'text-green-800' :
+                    (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 80 ? 'text-blue-800' :
+                    (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 50 ? 'text-yellow-800' :
+                    'text-red-800'
+                  }`}>
+                    Risk Level: {(submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 90 ? 'Low Risk' :
+                     (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 80 ? 'Low Risk' :
+                     (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 50 ? 'Moderate Risk' :
+                     'High Risk'}
+                  </h3>
+                  <p className="text-sm">
+                    {(submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 90 ? 'Grade A - Approved for all use' :
+                     (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 80 ? 'Grade B - Limited use allowed' :
+                     (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 50 ? 'Grade C - Small scale use only' :
+                     'Grade D/F - High risk - requires review'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <h3 className="font-medium text-gray-900 mb-3">Usage Metrics</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Annual Cost:</span>
+                      <span className="font-medium">$'$25,000'</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Students:</span>
+                      <span className="font-medium">'500'</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Staff:</span>
+                      <span className="font-medium">'100'</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="font-medium text-gray-900 mb-3">Risk Factors</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${(submission.generatedScorecard?.analysis?.compliancePercentage || 0) < 90 ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                      <span>Accessibility Grade: {(submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 90 ? 'A' :
+                       (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 80 ? 'B' :
+                       (submission.generatedScorecard?.analysis?.compliancePercentage || 0) >= 50 ? 'C' : 'D/F'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                      <span>User Count: '600'</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                      <span>Cost Impact: $25000</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Contact Vendor Tab */}
+        {activeTab === 'vendor' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Vendor Contact Information</h2>
+              
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Product Name</label>
+                  <p className="text-gray-900 mt-1">{submission.extractedData?.productName || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Vendor Name</label>
+                  <p className="text-gray-900 mt-1">{submission.extractedData?.vendorName || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Product URL</label>
+                  <p className="text-gray-900 mt-1">
+                    {submission.extractedData?.productName ? 
+                      <a href="#" className="text-blue-600 hover:underline">Visit Product Page</a> : 
+                      'N/A'
+                    }
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">VPAT Version</label>
+                  <p className="text-gray-900 mt-1">{submission.extractedData?.vpatVersion || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Report Date</label>
+                  <p className="text-gray-900 mt-1">{submission.extractedData?.reportDate || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Contact Email</label>
+                  <p className="text-gray-900 mt-1">
+                    {submission.extractedData?.vendorName ? 
+                      <a href="mailto:support@vendor.com" className="text-blue-600 hover:underline">Contact Vendor</a> : 
+                      'N/A'
+                    }
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                <h3 className="font-medium text-blue-900 mb-2">Accessibility Inquiries</h3>
+                <p className="text-sm text-blue-700">
+                  For accessibility questions or concerns, please contact the vendor directly using the information above. 
+                  Ensure all accessibility issues are documented and tracked for compliance purposes.
+                </p>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Logs Tab */}

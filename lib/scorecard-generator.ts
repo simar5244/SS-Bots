@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx'
 import { VPATMetadata, WCAGCriterion } from './vpat-parser'
+import { vpatNegligibleImpactHandler } from './vpat-negligible-impact-handler'
 import { OpenAI } from 'openai'
 
 const openai = new OpenAI({
@@ -20,6 +21,8 @@ interface ScorecardRow {
   pageNumber?: number
   excerpt?: string
   confidence?: number
+  hasPlatformVariations?: boolean
+  platformVersions?: string
   // Dynamic columns from template
   [key: string]: any
 }
@@ -78,14 +81,35 @@ export class ScorecardGenerator {
       })
     }
     
+    // Extract impact column data from reference scorecard for negligible impact detection
+    const impactMap = new Map<string, string>()
+    if (templateStructure && Array.isArray(templateStructure)) {
+      templateStructure.forEach((item: any) => {
+        if (item.criterionId && item.impact) {
+          impactMap.set(item.criterionId, item.impact)
+        }
+      })
+    }
+    
+    // Process criteria for negligible impact auto-support
+    const { processedCriteria, overriddenCount, overriddenCriteria } = 
+      vpatNegligibleImpactHandler.processAllCriteria(criteria, impactMap)
+    
+    if (overriddenCount > 0) {
+      console.log(`[NEGLIGIBLE IMPACT] Auto-marked ${overriddenCount} criteria as Supports due to negligible impact`)
+      overriddenCriteria.forEach(c => {
+        console.log(`  - ${c.criterionId}: ${c.criterionName} (was ${c.originalLevel}, impact: ${c.impactReason})`)
+      })
+    }
+    
     // Use AI to determine optimal column placement
-    const aiColumnPlan = await this.optimizeColumnPlacement(templateStructure, criteria)
+    const aiColumnPlan = await this.optimizeColumnPlacement(templateStructure, processedCriteria)
     
     // Extract scoring system from template
     const scoringAnalysis = await this.extractScoringSystem(templateStructure)
     
     // Map each criterion to scorecard format, matching against reference
-    const rows: ScorecardRow[] = criteria.map(criterion => {
+    const rows: ScorecardRow[] = processedCriteria.map(criterion => {
       const score = this.calculateScore(criterion.scorecardEquivalent, scoringAnalysis.scoringSystem)
       const status = this.determineStatus(criterion.scorecardEquivalent)
       
@@ -106,7 +130,11 @@ export class ScorecardGenerator {
         referenceRequirement: refRequirement?.requirement || null,
         pageNumber: criterion.pageNumber,
         excerpt: criterion.excerpt,
-        confidence: criterion.confidence
+        confidence: criterion.confidence,
+        hasPlatformVariations: criterion.hasPlatformVariations || false,
+        platformVersions: criterion.hasPlatformVariations && criterion.platformVersions 
+          ? criterion.platformVersions.map(pv => `${pv.platform}: ${pv.conformanceLevel}`).join('; ')
+          : undefined
       }
       
       // Add any additional columns from template
@@ -572,7 +600,7 @@ If no custom scoring is found, return the default scoring system.`
     const notApplicableCount = rows.filter(r => r.scorecardEquivalent === 'Not Applicable').length
     const notEvaluatedCount = rows.filter(r => r.scorecardEquivalent === 'Not Evaluated').length
     
-    const metadataSheet = XLSX.utils.aoa_to_sheet([
+    const summaryRows = [
       ['VPAT Evaluation Scorecard'],
       [''],
       ['Product Information'],
@@ -581,23 +609,34 @@ If no custom scoring is found, return the default scoring system.`
       ['VPAT Version', metadata.vpatVersion || 'N/A'],
       ['WCAG Version', metadata.wcagVersion || 'N/A'],
       ['WCAG Level', metadata.wcagLevel || 'N/A'],
-      ['Report Date', metadata.reportDate || 'N/A'],
+      ['Report Date', metadata.reportDate || 'N/A']
+    ]
+    
+    // Add platform information if this is a platform-specific report
+    if ((metadata as any).platformVersion) {
+      summaryRows.push(['Platform/Version', (metadata as any).platformVersion])
+      summaryRows.push(['Note', `This report is specific to the ${(metadata as any).platformVersion} platform`])
+    }
+    
+    summaryRows.push(
       [''],
       ['Overall Compliance Summary'],
       ['Overall Score', `${analysis.overallScore}/100`],
       ['Compliance Percentage', `${analysis.compliancePercentage}%`],
-      ['Total Criteria', totalCriteria],
-      ['Supports', supportsCount],
-      ['Partially Supports', partiallySupportsCount],
-      ['Does Not Support', doesNotSupportCount],
-      ['Not Applicable', notApplicableCount],
-      ['Not Evaluated', notEvaluatedCount],
+      ['Total Criteria', totalCriteria.toString()],
+      ['Supports', supportsCount.toString()],
+      ['Partially Supports', partiallySupportsCount.toString()],
+      ['Does Not Support', doesNotSupportCount.toString()],
+      ['Not Applicable', notApplicableCount.toString()],
+      ['Not Evaluated', notEvaluatedCount.toString()],
       [''],
       ['Level-Specific Compliance'],
       ['Level A Compliance', `${analysis.levelACompliance}%`],
       ['Level AA Compliance', `${analysis.levelAACompliance}%`],
       ['Level AAA Compliance', `${analysis.levelAAACompliance}%`]
-    ])
+    )
+    
+    const metadataSheet = XLSX.utils.aoa_to_sheet(summaryRows)
     XLSX.utils.book_append_sheet(workbook, metadataSheet, 'Summary')
 
     // Sheet 2: Comprehensive Scoring System

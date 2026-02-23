@@ -17,16 +17,28 @@ export interface VPATMetadata {
   contactInfo?: string
 }
 
+export interface PlatformVersion {
+  platform: string
+  conformanceLevel: 'Supports' | 'Partially Supports' | 'Does Not Support' | 'Not Applicable' | 'Not Evaluated'
+  scorecardEquivalent: 'Supports' | 'Partially Supports' | 'Does Not Support' | 'Not Applicable'
+  remarks?: string
+  pageNumber?: number
+  excerpt?: string
+  confidence?: number
+}
+
 export interface WCAGCriterion {
   criterionId: string
   criterionName: string
   level: string
   conformanceLevel: 'Supports' | 'Partially Supports' | 'Does Not Support' | 'Not Applicable' | 'Not Evaluated'
-  scorecardEquivalent: 'Supports' | 'Partially Supports' | 'Does Not Support'
+  scorecardEquivalent: 'Supports' | 'Partially Supports' | 'Does Not Support' | 'Not Applicable'
   remarks?: string
   pageNumber?: number
   excerpt?: string
   confidence?: number
+  platformVersions?: PlatformVersion[]
+  hasPlatformVariations?: boolean
 }
 
 export interface ValidationResult {
@@ -205,30 +217,145 @@ export class VPATDocumentParser {
     }
   }
 
-  async extractVPATData(documentText: string, method: 'method1' | 'method2' | 'dynamic' = 'method1', scorecardCriteria?: string[]): Promise<{
+  async extractVPATData(documentText: string, method: 'method1' | 'dynamic' = 'method1', scorecardCriteria?: string[], platformName?: string): Promise<{
     metadata: VPATMetadata
     criteria: WCAGCriterion[]
   }> {
-    if (method === 'method2') {
-      return this.extractVPATDataMethod2(documentText, scorecardCriteria)
+    if (platformName) {
+      return this.extractVPATDataForPlatform(documentText, scorecardCriteria || [], platformName)
     }
     if (method === 'dynamic') {
-      return this.extractVPATDataMethod2(documentText, scorecardCriteria) // Use method2 for dynamic processing
+      return this.extractVPATDataMethod2(documentText, scorecardCriteria)
     }
-    return this.extractVPATDataMethod1(documentText)
+    return this.extractVPATDataMethod1(documentText, scorecardCriteria)
   }
 
-  private async extractVPATDataMethod1(documentText: string): Promise<{
+  private async extractVPATDataForPlatform(documentText: string, scorecardCriteria: string[], platformName: string): Promise<{
     metadata: VPATMetadata
     criteria: WCAGCriterion[]
   }> {
+    console.log(`🎯 [PLATFORM EXTRACTION] Extracting data ONLY for platform: ${platformName}`)
+    
+    const prompt = `Extract VPAT data from this document, focusing EXCLUSIVELY on the "${platformName}" platform.
+
+${documentText}
+
+CRITICAL INSTRUCTIONS:
+1. This VPAT document contains information for MULTIPLE platforms (Web, Desktop, Mobile, Electronic Docs, Software, Authoring Tool, etc.)
+2. You MUST extract conformance levels ONLY for the "${platformName}" platform
+3. IGNORE all other platforms - if a criterion shows "Web: Supports, Desktop: Does Not Support", and you're extracting for Desktop, return ONLY "Does Not Support"
+4. Look for platform-specific sections, tables, or remarks that distinguish between platforms
+5. Extract ALL ${scorecardCriteria.length} criteria listed below
+
+WCAG CRITERIA TO ANALYZE (${scorecardCriteria.length} total):
+${scorecardCriteria.map(id => `${id}: Extract conformance for ${platformName} ONLY`).join('\n')}
+
+For EACH criterion, provide:
+- criterionId (exact match from list above)
+- criterionName (standard WCAG name)
+- level (A, AA, or AAA)
+- conformanceLevel (for ${platformName} ONLY: "Supports"|"Partially Supports"|"Does Not Support"|"Not Applicable"|"Not Evaluated")
+- pageNumber (integer from PAGE markers)
+- excerpt (20-50 word verbatim text showing ${platformName} conformance)
+- remarks (2-4 sentences explaining ${platformName} conformance level)
+- confidence (0-100)
+
+EXAMPLES:
+- If document says "Web: Supports, Desktop: Does Not Support" and platform is "Desktop", return conformanceLevel: "Does Not Support"
+- If document says "Electronic Docs: Not Applicable" and platform is "Electronic Docs", return conformanceLevel: "Not Applicable"
+- If no ${platformName}-specific info found, mark as "Not Evaluated"
+
+Return JSON with ALL ${scorecardCriteria.length} criteria for ${platformName}:
+{
+  "metadata": {
+    "vpatVersion": "...",
+    "productName": "... (${platformName})",
+    "vendorName": "...",
+    "reportDate": "...",
+    "wcagVersion": "...",
+    "wcagLevel": "...",
+    "platformVersion": "${platformName}"
+  },
+  "criteria": [{"criterionId": "1.1.1", "criterionName": "Non-text Content", "level": "A", "conformanceLevel": "Supports", "pageNumber": 5, "excerpt": "exact text for ${platformName}", "remarks": "reasoning for ${platformName}", "confidence": 95}]
+}`
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { 
+          role: 'system', 
+          content: `CRITICAL: You are extracting VPAT data for the "${platformName}" platform ONLY. 
+          - IGNORE all other platforms completely
+          - Return exactly ${scorecardCriteria.length} criteria for ${platformName}
+          - If a criterion shows different conformance for different platforms, extract ONLY the ${platformName} value
+          - If no ${platformName} info exists, mark as "Not Evaluated"
+          Return only valid JSON.` 
+        },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0,
+      response_format: { type: 'json_object' }
+    })
+
+    const result = JSON.parse(response.choices[0].message.content || '{}')
+    
+    console.log(`📊 [PLATFORM EXTRACTION] ${platformName} returned ${result.criteria?.length || 0} criteria, expected ${scorecardCriteria.length}`)
+    
+    // Validate and add missing criteria
+    if (scorecardCriteria && result.criteria) {
+      const extractedIds = new Set(result.criteria.map((c: any) => c.criterionId))
+      const missingIds = scorecardCriteria.filter(id => !extractedIds.has(id))
+      
+      if (missingIds.length > 0) {
+        console.warn(`⚠️ [PLATFORM EXTRACTION] ${platformName} missing ${missingIds.length} criteria:`, missingIds)
+        
+        // Add missing criteria as "Not Evaluated"
+        missingIds.forEach(id => {
+          result.criteria.push({
+            criterionId: id,
+            criterionName: `WCAG ${id}`,
+            level: 'A',
+            conformanceLevel: 'Not Evaluated',
+            scorecardEquivalent: 'Does Not Support',
+            remarks: `No ${platformName}-specific information found in VPAT`,
+            confidence: 50
+          })
+        })
+      }
+    }
+    
+    const criteria: WCAGCriterion[] = (result.criteria || []).map((c: any) => ({
+      ...c,
+      scorecardEquivalent: this.mapToScorecardEquivalent(c.conformanceLevel),
+      pageNumber: c.pageNumber || undefined,
+      excerpt: c.excerpt || undefined,
+      confidence: c.confidence || undefined
+    }))
+
+    return {
+      metadata: {
+        ...result.metadata,
+        platformVersion: platformName
+      },
+      criteria
+    }
+  }
+
+  private async extractVPATDataMethod1(documentText: string, scorecardCriteria?: string[]): Promise<{
+    metadata: VPATMetadata
+    criteria: WCAGCriterion[]
+  }> {
+    const criteriaList = scorecardCriteria && scorecardCriteria.length > 0 
+      ? `\n\nWCAG CRITERIA TO EXTRACT (${scorecardCriteria.length} total):\n${scorecardCriteria.join(', ')}\n\nYou MUST extract ALL ${scorecardCriteria.length} criteria listed above.`
+      : '\n\nExtract ALL WCAG criteria found in the document.'
+    
     const prompt = `Extract VPAT data from this document:
 
 ${documentText.substring(0, 30000)}
 
 Extract:
 1. Metadata: vpatVersion, productName, vendorName, reportDate, wcagVersion, wcagLevel, productDescription, contactInfo
-2. ALL WCAG criteria with: 
+2. WCAG criteria with: 
    - criterionId
    - criterionName
    - level
@@ -236,6 +363,7 @@ Extract:
    - pageNumber (integer, derived from the PAGE markers in the text, e.g. "--- PAGE 5 ---" -> 5)
    - excerpt (20-50 word relevant text snippet copied verbatim from the page that supports your conclusion)
    - remarks (2-4 sentence reasoning that explains exactly WHY you chose that conformanceLevel for this criterion, explicitly referencing the excerpt and pageNumber)
+${criteriaList}
 
 Return JSON:
 {
@@ -334,7 +462,69 @@ Return JSON with ALL criteria:
 
     const result = JSON.parse(response.choices[0].message.content || '{}')
     
+    console.log(`📊 [EXTRACTION] AI returned ${result.criteria?.length || 0} criteria, expected ${scorecardCriteria?.length || 0}`)
+    
     // Validate that we got the expected number of criteria
+    if (scorecardCriteria && result.criteria) {
+      const extractedIds = new Set(result.criteria.map((c: any) => c.criterionId))
+      const missingIds = scorecardCriteria.filter(id => !extractedIds.has(id))
+      
+      if (missingIds.length > 0) {
+        console.warn(`⚠️ [EXTRACTION] Missing ${missingIds.length} criteria:`, missingIds)
+        console.log(`🔍 [EXTRACTION] Attempting to extract missing criteria in second pass...`)
+        
+        // Second pass: Extract only the missing criteria with more focused prompt
+        const missingPrompt = `From this VPAT document, extract ONLY these specific missing WCAG criteria:
+
+${documentText}
+
+MISSING CRITERIA TO FIND (${missingIds.length} total):
+${missingIds.join(', ')}
+
+For EACH criterion above, you MUST return:
+- criterionId (exact match from list)
+- criterionName
+- level (A, AA, or AAA)
+- conformanceLevel
+- pageNumber
+- excerpt
+- remarks
+- confidence
+
+If a criterion is truly not mentioned, mark it as "Not Evaluated" but you MUST still include it.
+
+Return JSON with exactly ${missingIds.length} criteria:
+{
+  "criteria": [...]
+}`
+
+        try {
+          const secondResponse = await openai.chat.completions.create({
+            model: 'gpt-4o',
+            messages: [
+              { 
+                role: 'system', 
+                content: `Extract the ${missingIds.length} missing WCAG criteria. Return exactly ${missingIds.length} criteria - one for each ID provided. Return only valid JSON.` 
+              },
+              { role: 'user', content: missingPrompt }
+            ],
+            temperature: 0,
+            response_format: { type: 'json_object' }
+          })
+          
+          const secondResult = JSON.parse(secondResponse.choices[0].message.content || '{}')
+          
+          if (secondResult.criteria && secondResult.criteria.length > 0) {
+            console.log(`✅ [EXTRACTION] Second pass found ${secondResult.criteria.length} additional criteria`)
+            result.criteria = [...result.criteria, ...secondResult.criteria]
+          }
+        } catch (secondPassError) {
+          console.error(`❌ [EXTRACTION] Second pass failed:`, secondPassError)
+        }
+      }
+    }
+    
+    // Final validation
     const expectedCount = scorecardCriteria?.length || 0
     const actualCount = result.criteria?.length || 0
     
@@ -378,8 +568,8 @@ Return JSON with ALL criteria:
     }
   }
 
-  private mapToScorecardEquivalent(conformanceLevel: string): 'Supports' | 'Partially Supports' | 'Does Not Support' {
-    if (conformanceLevel === 'Not Applicable') return 'Supports'
+  private mapToScorecardEquivalent(conformanceLevel: string): 'Supports' | 'Partially Supports' | 'Does Not Support' | 'Not Applicable' {
+    if (conformanceLevel === 'Not Applicable') return 'Not Applicable'
     if (conformanceLevel === 'Not Evaluated') return 'Does Not Support'
     if (conformanceLevel === 'Supports') return 'Supports'
     if (conformanceLevel === 'Partially Supports') return 'Partially Supports'
