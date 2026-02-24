@@ -163,6 +163,12 @@ export default function VPATSubmissionDetail() {
   const [scorecardResult, setScorecardResult] = useState<ScorecardResult | null>(null)
   const [expandedDisabilities, setExpandedDisabilities] = useState<Set<number>>(new Set())
   const [expandedWCAG, setExpandedWCAG] = useState<'2.0' | '2.1' | '2.2' | null>(null)
+  const [showLogPanel, setShowLogPanel] = useState(false)
+
+  const logEntries = useMemo(() => {
+    if (!submission?.processingLog) return []
+    return [...submission.processingLog].sort((a, b) => b.timestamp - a.timestamp).slice(0, 200)
+  }, [submission?.processingLog])
 
   const availablePlatforms = useMemo(() => {
     return submission?.platformReports?.map((report) => report.platform) || []
@@ -211,6 +217,20 @@ export default function VPATSubmissionDetail() {
     setStaffCount(impact?.numberOfStaff ?? 0)
     setIsPublicUse(impact?.isPublicUse ?? false)
   }, [submission?.id])
+
+  // Hidden log viewer toggle: Ctrl+Shift+M
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'm') {
+        event.preventDefault()
+        setShowLogPanel((prev) => !prev)
+        fetchSubmission()
+      }
+    }
+
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   useEffect(() => {
     if (!submission) return
@@ -2145,6 +2165,41 @@ export default function VPATSubmissionDetail() {
           </div>
         )}
       </main>
+
+      {/* Hidden debug log overlay - toggle with Ctrl+Shift+M */}
+      {showLogPanel && (
+        <div className="fixed bottom-4 right-4 w-96 max-h-[60vh] bg-white/95 backdrop-blur shadow-xl border border-gray-200 rounded-lg overflow-hidden z-50">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 bg-gray-50">
+            <div>
+              <p className="text-xs uppercase text-gray-500 tracking-wide">Processing Logs</p>
+              <p className="text-[11px] text-gray-500">Real-time updates (Ctrl+Shift+M to toggle)</p>
+            </div>
+            <button
+              onClick={() => setShowLogPanel(false)}
+              className="text-xs text-gray-500 hover:text-gray-800"
+            >
+              Hide
+            </button>
+          </div>
+          <div className="p-3 space-y-2 overflow-y-auto max-h-[50vh] text-xs font-mono bg-white">
+            {logEntries.length === 0 && (
+              <p className="text-gray-500">No logs yet.</p>
+            )}
+            {logEntries.map((entry, idx) => (
+              <div key={`${entry.timestamp}-${entry.step}-${idx}`} className="border border-gray-100 rounded-md p-2">
+                <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1">
+                  <span>{new Date(entry.timestamp).toLocaleTimeString()}</span>
+                  <span className={entry.status === 'error' ? 'text-red-600' : entry.status === 'warning' ? 'text-amber-600' : 'text-green-600'}>
+                    {entry.status.toUpperCase()}
+                  </span>
+                </div>
+                <p className="text-gray-900 font-semibold text-[11px]">{entry.step}</p>
+                {entry.details && <p className="text-gray-700 mt-1 text-[11px] leading-snug">{entry.details}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
