@@ -24,7 +24,7 @@ import { vpatPlatformParser } from './vpat-platform-parser'
 import { vpatMultiProductParser } from './vpat-multi-product-parser'
 import OpenAI from 'openai'
 import * as XLSX from 'xlsx'
-import { writeFile } from 'fs/promises'
+import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 
 const openai = new OpenAI({
@@ -329,6 +329,7 @@ export async function processVPATSubmissionDynamic(
     // STEP 5: Save all platform reports
     console.log('📊 [STEP 5] Saving platform reports...')
     const savedReports = []
+    await mkdir(SCORECARD_DIR, { recursive: true })
     
     for (const report of platformReports) {
       const filePath = join(SCORECARD_DIR, report.fileName)
@@ -559,7 +560,6 @@ export async function processVPATSubmissionDynamic(
 
     // Save files and update database
     console.log('💾 [STEP 13] Starting file and database save...')
-    const { mkdir } = await import('fs/promises')
     await mkdir(SCORECARD_DIR, { recursive: true })
     
     const scorecardFileName = `Scorecard_${extractedData.metadata.productName?.replace(/[^a-zA-Z0-9]/g, '_') || 'Unknown'}_${Date.now()}.xlsx`
