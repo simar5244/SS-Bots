@@ -20,10 +20,25 @@
     "tsconfig.json",
     "tailwind.config.js",
     "postcss.config.js",
-    ".env"
+    ".env",
+    "!node_modules/**/{CHANGELOG.md,README.md,readme.md,readme,test,__tests__,tests,powered-test,example,examples}",
+    "!node_modules/**/{*.d.ts,*.map,*.ts.map}",
+    "!node_modules/.bin",
+    "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+    "!.editorconfig",
+    "!**/._*",
+    "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+    "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+    "!**/{appveyor.yml,.travis.yml,circle.yml}",
+    "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+  ],
+  "asarUnpack": [
+    "node_modules/**/*",
+    ".next/**/*"
   ],
   "npmRebuild": false,
   "buildDependenciesFromSource": false,
+  "compression": "maximum",
   "win": {
     "target": [
       {
@@ -32,6 +47,17 @@
       }
     ],
     "artifactName": "${productName}-Setup-${version}.${ext}"
+  },
+  "mac": {
+    "target": ["dmg", "zip"],
+    "category": "public.app-category.productivity",
+    "artifactName": "${productName}-${version}-mac.${ext}",
+    "icon": "build/icon-512.png",
+    "hardenedRuntime": false,
+    "gatekeeperAssess": false,
+    "extendInfo": {
+      "LSUIElement": true
+    }
   },
   "nsis": {
     "oneClick": false,

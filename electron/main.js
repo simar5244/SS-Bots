@@ -1,19 +1,63 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
+const fs = require('fs');
 
 let mainWindow;
 let nextServer;
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+
+if (!gotSingleInstanceLock) {
+  app.quit();
+  process.exit(0);
+}
 
 function startNextServer() {
   return new Promise((resolve, reject) => {
-    // Use npm start for production with completely hidden process
-    nextServer = spawn('npm', ['start'], {
-      cwd: path.join(__dirname, '..'),
-      shell: true,
-      windowsHide: true, // Hide console window on Windows
-      detached: false, // Keep attached to parent but hidden
-      stdio: ['ignore', 'pipe', 'pipe'], // Redirect output to prevent console
+    const isDev = !app.isPackaged;
+    
+    // For packaged apps, use app.getAppPath() which points to app.asar
+    // But we need the unpacked directory for node_modules
+    let appPath;
+    if (isDev) {
+      appPath = path.join(__dirname, '..');
+    } else {
+      // In packaged mode, app.getAppPath() returns path to app.asar
+      // We need to use app.asar.unpacked for node_modules
+      const asarPath = app.getAppPath();
+      appPath = asarPath.replace('app.asar', 'app.asar.unpacked');
+    }
+    
+    // In packaged mode, run bundled Electron executable in Node mode
+    const nodeExecutable = isDev ? 'npm' : process.execPath;
+    const nextBin = path.join(appPath, 'node_modules', 'next', 'dist', 'bin', 'next');
+    const args = isDev ? ['start'] : [nextBin, 'start', '-p', '3000'];
+
+    if (!isDev && !fs.existsSync(nextBin)) {
+      reject(new Error(`Next.js executable not found: ${nextBin}`));
+      return;
+    }
+    
+    console.log('Starting Next.js server...');
+    console.log('isDev:', isDev);
+    console.log('App path:', appPath);
+    console.log('Node executable:', nodeExecutable);
+    console.log('Next bin:', nextBin);
+    console.log('Next bin exists:', fs.existsSync(nextBin));
+    console.log('Args:', args);
+    
+    nextServer = spawn(nodeExecutable, args, {
+      cwd: appPath,
+      shell: isDev,
+      windowsHide: true,
+      detached: false,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: {
+        ...process.env,
+        NODE_ENV: 'production',
+        PORT: '3000',
+        ...(isDev ? {} : { ELECTRON_RUN_AS_NODE: '1' })
+      }
     });
     
     let resolved = false;
@@ -95,6 +139,13 @@ app.whenReady().then(async () => {
       error.message || 'Could not start the application server. Please make sure no other instance is running and try again.'
     );
     app.quit();
+  }
+});
+
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
   }
 });
 

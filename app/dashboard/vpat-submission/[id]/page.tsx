@@ -218,16 +218,18 @@ export default function VPATSubmissionDetail() {
     setIsPublicUse(impact?.isPublicUse ?? false)
   }, [submission?.id])
 
-  // Hidden log viewer toggle: Ctrl+Shift+M
+  // Hidden log viewer toggle: Ctrl+Shift+M (Windows/Linux) / Shift+Cmd+1 (Mac)
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'm') {
+      const isWindowsShortcut = event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'm'
+      const isMacShortcut = event.metaKey && event.shiftKey && event.key === '1'
+      
+      if (isWindowsShortcut || isMacShortcut) {
         event.preventDefault()
         setShowLogPanel((prev) => !prev)
         fetchSubmission()
       }
     }
-
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [])

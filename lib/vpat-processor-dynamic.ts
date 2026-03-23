@@ -31,7 +31,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
-const SCORECARD_DIR = join(process.env.HOME || '', 'Desktop', 'db', 'vpat-scorecards')
+const SCORECARD_DIR = join(process.env.HOME || process.env.USERPROFILE || '', 'Desktop', 'db', 'vpat-scorecards')
 
 interface ScorecardAnalysis {
   evaluationMethodology: string
